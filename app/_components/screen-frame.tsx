@@ -33,7 +33,7 @@ export function ScreenFrame({
     <section
       aria-hidden={!isActive}
       className={cn(
-        "absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 pb-8 pt-[calc(var(--top-nav-height)+0.75rem)]",
+        "absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 pb-8 pt-[calc(var(--top-nav-height)+0.5rem)]",
         !reduceMotion && "transition-all duration-300 ease-out",
         isActive
           ? "translate-x-0 opacity-100"

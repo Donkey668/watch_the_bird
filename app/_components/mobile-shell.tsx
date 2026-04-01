@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { AuthSessionSnapshot, LoginResponse } from "@/lib/auth/login";
+import { GUEST_AUTH_SESSION } from "@/lib/auth/session-store";
 import {
   Card,
   CardContent,
@@ -8,13 +10,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { AnalysisScreen } from "./analysis-screen";
+import { AuthEntry } from "./auth-entry";
 import { IdentifyScreen } from "./identify-screen";
+import {
+  LoginRegisterDialog,
+  type AuthDialogMode,
+} from "./login-register-dialog";
 import { RecordsScreen } from "./records-screen";
 import { ScreenFrame } from "./screen-frame";
 import { TopNav, type ScreenId } from "./top-nav";
 
 const TRANSITION_MS = 280;
+
+type MobileShellProps = {
+  initialAuthSession: AuthSessionSnapshot;
+};
 
 function readLandscapeState() {
   if (typeof window === "undefined") {
@@ -24,16 +36,23 @@ function readLandscapeState() {
   return window.innerWidth > window.innerHeight;
 }
 
-export function MobileShell() {
+export function MobileShell({ initialAuthSession }: MobileShellProps) {
   const [activeScreen, setActiveScreen] = useState<ScreenId>("analysis");
   const [isLandscape, setIsLandscape] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [authSession, setAuthSession] =
+    useState<AuthSessionSnapshot>(initialAuthSession);
+  const [authDialogMode, setAuthDialogMode] = useState<AuthDialogMode>(null);
+  const [isLoginSubmitting, setIsLoginSubmitting] = useState(false);
+  const [isLogoutSubmitting, setIsLogoutSubmitting] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const activeScreenRef = useRef<ScreenId>("analysis");
   const queuedScreenRef = useRef<ScreenId | null>(null);
   const transitionTimeoutRef = useRef<number | null>(null);
   const commitScreenRef = useRef<(nextScreen: ScreenId) => void>(() => {});
+  const loginRequestVersionRef = useRef(0);
 
   const clearTransitionTimer = useCallback(() => {
     if (transitionTimeoutRef.current !== null) {
@@ -137,6 +156,113 @@ export function MobileShell() {
     };
   }, [clearTransitionTimer]);
 
+  const openAuthDialog = useCallback(
+    (mode: Exclude<AuthDialogMode, null>) => {
+      if (isLoginSubmitting) {
+        return;
+      }
+
+      setLoginError(null);
+      setAuthDialogMode(mode);
+    },
+    [isLoginSubmitting],
+  );
+
+  const closeAuthDialog = useCallback(() => {
+    if (isLoginSubmitting) {
+      return;
+    }
+
+    setAuthDialogMode(null);
+    setLoginError(null);
+  }, [isLoginSubmitting]);
+
+  const handleLoginSubmit = useCallback(
+    async ({
+      assistantAccount,
+      userPassword,
+    }: {
+      assistantAccount: string;
+      userPassword: string;
+    }) => {
+      const requestVersion = ++loginRequestVersionRef.current;
+
+      setIsLoginSubmitting(true);
+      setLoginError(null);
+
+      try {
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          cache: "no-store",
+          body: JSON.stringify({
+            assistantAccount,
+            userPassword,
+          }),
+        });
+
+        const payload = (await response.json()) as LoginResponse;
+
+        if (requestVersion !== loginRequestVersionRef.current) {
+          return;
+        }
+
+        if (
+          response.ok &&
+          payload.requestStatus === "success" &&
+          payload.assistantAccount
+        ) {
+          setAuthSession({
+            status: "authenticated",
+            assistantAccount: payload.assistantAccount,
+            authenticatedAt: new Date().toISOString(),
+          });
+          setAuthDialogMode(null);
+          setLoginError(null);
+          return;
+        }
+
+        setLoginError(payload.message);
+      } catch {
+        if (requestVersion !== loginRequestVersionRef.current) {
+          return;
+        }
+
+        setLoginError("登录服务暂时不可用，请稍后重试。");
+      } finally {
+        if (requestVersion === loginRequestVersionRef.current) {
+          setIsLoginSubmitting(false);
+        }
+      }
+    },
+    [],
+  );
+
+  const handleLogout = useCallback(async () => {
+    if (isLogoutSubmitting) {
+      return;
+    }
+
+    setIsLogoutSubmitting(true);
+
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        cache: "no-store",
+      });
+
+      if (response.ok) {
+        setAuthSession(GUEST_AUTH_SESSION);
+      }
+    } finally {
+      setIsLogoutSubmitting(false);
+    }
+  }, [isLogoutSubmitting]);
+
+  const isAuthDialogOpen = authDialogMode !== null;
+
   return (
     <div className="relative mx-auto h-dvh w-full max-w-[430px] overflow-hidden border-x border-[var(--border-subtle)] bg-[radial-gradient(circle_at_top,_#fcfff8,_#f3f9ec_58%,_#edf4e8)] shadow-[0_0_0_1px_rgba(174,194,166,0.2),0_28px_88px_-34px_rgba(30,56,32,0.35)]">
       <TopNav
@@ -144,9 +270,30 @@ export function MobileShell() {
         onSelect={handleSelect}
         isTransitioning={isTransitioning}
       />
+      <div className="absolute inset-x-0 top-[calc(var(--top-nav-height)+0.5rem)] z-20 px-4">
+        <div
+          className={cn(
+            "mx-auto flex w-full max-w-[26rem] justify-end transition-opacity duration-200",
+            isAuthDialogOpen && "pointer-events-none opacity-70",
+          )}
+        >
+          <AuthEntry
+            session={authSession}
+            isLogoutSubmitting={isLogoutSubmitting}
+            onOpenLogin={() => openAuthDialog("login")}
+            onOpenRegister={() => openAuthDialog("register")}
+            onLogout={handleLogout}
+          />
+        </div>
+      </div>
 
       {isLandscape ? (
-        <main className="h-full overflow-y-auto px-4 pb-6 pt-[calc(var(--top-nav-height)+1rem)]">
+        <main
+          className={cn(
+            "h-full overflow-y-auto px-4 pb-6 pt-[calc(var(--top-nav-height)+0.5rem)]",
+            isAuthDialogOpen && "pointer-events-none",
+          )}
+        >
           <div className="mx-auto w-full max-w-[26rem]">
             <Card className="border-orange-300 bg-orange-50/75">
               <CardHeader>
@@ -166,7 +313,12 @@ export function MobileShell() {
           </div>
         </main>
       ) : (
-        <main className="relative h-full overflow-hidden">
+        <main
+          className={cn(
+            "relative h-full overflow-hidden",
+            isAuthDialogOpen && "pointer-events-none",
+          )}
+        >
           <ScreenFrame
             id="analysis"
             activeId={activeScreen}
@@ -190,6 +342,14 @@ export function MobileShell() {
           </ScreenFrame>
         </main>
       )}
+
+      <LoginRegisterDialog
+        mode={authDialogMode}
+        isSubmitting={isLoginSubmitting}
+        loginError={loginError}
+        onClose={closeAuthDialog}
+        onLoginSubmit={handleLoginSubmit}
+      />
     </div>
   );
 }
