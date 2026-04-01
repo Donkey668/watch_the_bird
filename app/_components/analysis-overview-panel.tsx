@@ -17,6 +17,7 @@ import type { AnalysisOverviewSnapshot } from "@/lib/weather/birding-outlook";
 type AnalysisOverviewPanelProps = {
   isLoading: boolean;
   overview?: AnalysisOverviewSnapshot | null;
+  embedded?: boolean;
 };
 
 type OverviewNoteKey =
@@ -312,19 +313,25 @@ function OverviewRow({
 export function AnalysisOverviewPanel({
   isLoading,
   overview,
+  embedded = false,
 }: AnalysisOverviewPanelProps) {
   const [activeNote, setActiveNote] = useState<OverviewNoteKey | null>(null);
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">分析总览</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
+      <section
+        className={cn(
+          "space-y-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)]",
+          embedded ? "p-4" : "p-5",
+        )}
+      >
+        <h3 className="text-sm font-semibold leading-tight text-[var(--text-primary)]">
+          分析总览
+        </h3>
+        <div>
           <LoadingOverviewRows />
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     );
   }
 
@@ -334,42 +341,47 @@ export function AnalysisOverviewPanel({
 
   return (
     <>
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">{overview.title}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 pt-0">
+      <section
+        className={cn(
+          "rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)]",
+          embedded ? "p-4" : "p-5",
+        )}
+      >
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold leading-tight text-[var(--text-primary)]">
+            {overview.title}
+          </h3>
           <p className="text-sm font-medium leading-6 text-[var(--text-primary)]">
             {overview.beijingTime.displayText}
           </p>
+        </div>
 
-          <div className="space-y-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
-            <div className="space-y-3">
-              <OverviewRow
-                label={overview.habitatActivity.label}
-                value={overview.habitatActivity.value}
-                noteKey="habitatActivity"
-                isUnavailable={overview.habitatActivity.status === "unavailable"}
-                onOpenNote={setActiveNote}
-              />
-              <Separator />
-              <OverviewRow
-                label={overview.migrationSignal.label}
-                value={overview.migrationSignal.value}
-                noteKey="migrationSignal"
-                onOpenNote={setActiveNote}
-              />
-              <Separator />
-              <OverviewRow
-                label={overview.observationConfidence.label}
-                value={overview.observationConfidence.value}
-                noteKey="observationConfidence"
-                onOpenNote={setActiveNote}
-              />
-            </div>
+        <div className="mt-4 space-y-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
+          <div className="space-y-3">
+            <OverviewRow
+              label={overview.habitatActivity.label}
+              value={overview.habitatActivity.value}
+              noteKey="habitatActivity"
+              isUnavailable={overview.habitatActivity.status === "unavailable"}
+              onOpenNote={setActiveNote}
+            />
+            <Separator />
+            <OverviewRow
+              label={overview.migrationSignal.label}
+              value={overview.migrationSignal.value}
+              noteKey="migrationSignal"
+              onOpenNote={setActiveNote}
+            />
+            <Separator />
+            <OverviewRow
+              label={overview.observationConfidence.label}
+              value={overview.observationConfidence.value}
+              noteKey="observationConfidence"
+              onOpenNote={setActiveNote}
+            />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       <NoteDialog noteKey={activeNote} onClose={() => setActiveNote(null)} />
     </>
