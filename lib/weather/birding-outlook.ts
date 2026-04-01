@@ -14,6 +14,13 @@ export type BirdingRequestStatus =
   | "invalid_park"
   | "failed";
 export type WeatherRawStatus = "success" | "unavailable";
+export type HabitatActivityValue =
+  | "较高"
+  | "中等"
+  | "较低"
+  | "暂不可用";
+export type HabitatActivityStatus = "success" | "unavailable";
+export type MigrationSignalValue = "极高" | "较高" | "中等" | "较低";
 
 export type WeatherDetail = {
   key: string;
@@ -53,6 +60,35 @@ export type BirdingIndexAssessment = {
   failureReason?: string | null;
 };
 
+export type BeijingTimeSummary = {
+  displayText: string;
+  isoTimestamp: string;
+};
+
+export type HabitatActivitySummary = {
+  label: "栖息地活跃度";
+  value: HabitatActivityValue;
+  status: HabitatActivityStatus;
+};
+
+export type MigrationSignalSummary = {
+  label: "迁徙信号";
+  value: MigrationSignalValue;
+};
+
+export type ObservationConfidenceSummary = {
+  label: "观测可信度";
+  value: "稳定";
+};
+
+export type AnalysisOverviewSnapshot = {
+  title: "分析总览";
+  beijingTime: BeijingTimeSummary;
+  habitatActivity: HabitatActivitySummary;
+  migrationSignal: MigrationSignalSummary;
+  observationConfidence: ObservationConfidenceSummary;
+};
+
 export type BirdingOutlookResponse = {
   requestStatus: BirdingRequestStatus;
   message: string;
@@ -60,6 +96,7 @@ export type BirdingOutlookResponse = {
   park?: ParkWeatherContext;
   weather?: DistrictWeatherSnapshot | null;
   birdingIndex?: BirdingIndexAssessment | null;
+  analysisOverview?: AnalysisOverviewSnapshot | null;
 };
 
 export function getBirdingModelName() {
@@ -105,6 +142,7 @@ export function createInvalidParkResponse(
     message:
       "\u672a\u627e\u5230\u5bf9\u5e94\u7684\u516c\u56ed\u53c2\u6570\u3002",
     requestedAt,
+    analysisOverview: null,
   };
 }
 
@@ -113,6 +151,7 @@ export function createSuccessResponse(
   park: ParkWeatherContext,
   weather: DistrictWeatherSnapshot,
   birdingIndex: BirdingIndexAssessment,
+  analysisOverview: AnalysisOverviewSnapshot,
 ): BirdingOutlookResponse {
   return {
     requestStatus: "success",
@@ -122,6 +161,7 @@ export function createSuccessResponse(
     park,
     weather,
     birdingIndex,
+    analysisOverview,
   };
 }
 
@@ -130,6 +170,7 @@ export function createPartialResponse(
   park: ParkWeatherContext,
   weather: DistrictWeatherSnapshot,
   birdingIndex: BirdingIndexAssessment,
+  analysisOverview: AnalysisOverviewSnapshot,
 ): BirdingOutlookResponse {
   return {
     requestStatus: "partial",
@@ -139,6 +180,7 @@ export function createPartialResponse(
     park,
     weather,
     birdingIndex,
+    analysisOverview,
   };
 }
 
@@ -154,5 +196,6 @@ export function createFailedResponse(
     park,
     weather: null,
     birdingIndex: null,
+    analysisOverview: null,
   };
 }

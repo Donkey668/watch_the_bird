@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { assessBirdingIndex } from "@/lib/ai/birding-index";
+import { createAnalysisOverviewSnapshot } from "@/lib/analysis/analysis-overview";
 import { getParkById } from "@/lib/maps/park-options";
 import { fetchDistrictWeather } from "@/lib/weather/amap-weather";
 import {
@@ -14,7 +15,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const requestedAt = new Date().toISOString();
+  const requestDate = new Date();
+  const requestedAt = requestDate.toISOString();
   const parkId = request.nextUrl.searchParams.get("parkId")?.trim();
 
   if (!parkId) {
@@ -44,15 +46,26 @@ export async function GET(request: NextRequest) {
 
   const birdingIndex = await assessBirdingIndex(weatherResult.data);
   if (birdingIndex.status === "success") {
+    const analysisOverview = createAnalysisOverviewSnapshot(
+      birdingIndex,
+      requestDate,
+    );
+
     return Response.json(
       createSuccessResponse(
         requestedAt,
         parkContext,
         weatherResult.data,
         birdingIndex,
+        analysisOverview,
       ),
     );
   }
+
+  const analysisOverview = createAnalysisOverviewSnapshot(
+    birdingIndex,
+    requestDate,
+  );
 
   return Response.json(
     createPartialResponse(
@@ -60,6 +73,7 @@ export async function GET(request: NextRequest) {
       parkContext,
       weatherResult.data,
       birdingIndex,
+      analysisOverview,
     ),
   );
 }
