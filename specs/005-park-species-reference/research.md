@@ -10,52 +10,51 @@
 - **Alternatives considered**:
   - Create separate `/preview` and `/full` endpoints.
     Rejected because it duplicates validation and response shaping logic.
-  - Read Excel directly in the client.
+  - Read JSON directly in the client.
     Rejected because it violates the backend contract boundary and exposes file
     parsing to the browser.
 
-## Decision 2: Parse Excel on the server with `xlsx`
+## Decision 2: Parse JSON on the server in the Route Handler
 
-- **Decision**: Read workbooks only on the server in a Node.js Route Handler
-  and parse them with the `xlsx` package.
-- **Rationale**: The source material is explicitly provided as Excel files, and
-  `xlsx` is the lowest-friction way to support the current `.xlsx` assets
-  without hand-writing XML/ZIP parsing logic.
+- **Decision**: Read the park-specific JSON files only on the server in the
+  Route Handler and parse them directly with Node.js.
+- **Rationale**: The source material is now stored as repository-local JSON
+  files, so direct server-side JSON parsing is simpler, faster, and removes the
+  need for any Excel-specific adapter layer.
 - **Alternatives considered**:
-  - Convert Excel files to JSON or CSV ahead of time.
-    Rejected because the requirement explicitly treats Excel as the source of
-    truth and does not ask for an offline conversion workflow.
-  - Build a custom XLSX parser with ZIP/XML primitives.
-    Rejected because it increases maintenance cost and risk for a solved problem.
+  - Keep the previous JSON-via-Python compatibility layer.
+    Rejected because JSON no longer needs a Python-side parser.
+  - Read JSON directly in the client.
+    Rejected because it would bypass the required API boundary.
 
-## Decision 3: Keep workbook mapping explicit and park-id based
+## Decision 3: Keep source mapping explicit and park-id based
 
 - **Decision**: Maintain a server-side registry mapping `ParkId` values to
-  workbook filenames in `parkinfo/`, including explicit aliases for mismatched
-  names such as `shenzhen-east-lake-park -> Shenzhen Donghu Park.xlsx`.
-- **Rationale**: The workbook filenames do not perfectly match the existing
+  JSON filenames in `parkinfo/`, including explicit aliases for mismatched
+  names such as `shenzhen-east-lake-park -> Shenzhen Donghu Park.json`.
+- **Rationale**: The source filenames do not perfectly match the existing
   `ParkId` strings, so an explicit mapping avoids brittle name-derivation rules.
 - **Alternatives considered**:
   - Infer file names from translated park names.
     Rejected because current names mix English and pinyin and are not
     reversible with guaranteed correctness.
-  - Store the workbook path directly in `park-options.ts`.
+  - Store the source path directly in `park-options.ts`.
     Rejected because species-reference file concerns are better isolated from
     map configuration.
 
-## Decision 4: Parse the full workbook per request, then slice for preview
+## Decision 4: Parse the full JSON source per request, then slice for preview
 
-- **Decision**: For the current scope, parse the selected workbook into a
+- **Decision**: For the current scope, parse the selected JSON source into a
   normalized record array on each request and derive preview/full payloads by
   slicing in memory.
-- **Rationale**: The inspected workbook sizes are small enough for this to stay
-  simple and fast: current files contain roughly 32, 36, 36, and 58 usable
-  records after excluding headers.
+- **Rationale**: The current JSON files are small enough for this to stay
+  simple and fast: current files contain roughly 20, 20, 30, and 58 usable
+  records, depending on the park.
 - **Alternatives considered**:
-  - Add an in-memory workbook cache keyed by file path and modification time.
+  - Add an in-memory source cache keyed by file path and modification time.
     Rejected because the current data volume does not justify extra coherence
     and invalidation complexity.
-  - Stream rows incrementally from the workbook.
+  - Stream rows incrementally from the JSON source.
     Rejected because the preview/full requirement needs total counts and does
     not benefit from a streaming API at this scale.
 
@@ -104,7 +103,8 @@
 
 - **Decision**: Distinguish between “文件存在但无有效记录” and “文件缺失/无法读取”.
 - **Rationale**: An empty dataset is not the same failure mode as a missing or
-  unreadable workbook, and the UI should help users understand that difference.
+  unreadable JSON source, and the UI should help users understand that
+  difference.
 - **Alternatives considered**:
   - Collapse all non-success outcomes into one generic failure state.
     Rejected because it prevents meaningful debugging and user feedback.

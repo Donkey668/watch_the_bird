@@ -5,7 +5,7 @@
 - **Route**: `GET /api/analysis/habitat-species-reference`
 - **Caller**: Analysis-page habitat species reference component
 - **Purpose**: Return preview or full bird species records for the currently
-  selected preset park, based on the corresponding workbook in `parkinfo/`
+  selected preset park, based on the corresponding JSON source file in `parkinfo/`
 
 ## Request Contract
 
@@ -21,9 +21,9 @@
 - The frontend must use `view=preview` for the initial module load.
 - The frontend must only request `view=full` after the user explicitly taps
   `点击查看全部信息`.
-- The frontend must not read or parse Excel files directly in the browser.
-- The endpoint must run in the Next.js server runtime and keep workbook access
-  behind the API boundary.
+- The frontend must not read or parse local JSON source files directly in the browser.
+- The endpoint must run in the Next.js server runtime and keep source access behind
+  the API boundary.
 
 ## Success Response Contract
 
@@ -39,25 +39,25 @@
   "sourceStatus": "available",
   "collection": {
     "view": "preview",
-    "totalCount": 32,
+    "totalCount": 30,
     "returnedCount": 10,
     "hasMore": true,
     "isComplete": false,
     "records": [
       {
         "sequence": 1,
-        "speciesName": "白鹭",
+        "speciesName": "白头鹎",
         "residencyType": "留鸟",
         "protectionLevel": "三有",
-        "ecologicalTraits": "湿地常见，通体白色羽毛，嘴黑色，常站立于红树林边缘或浅水区捕食鱼类",
+        "ecologicalTraits": "全园分布，草坪、树冠层活跃，鸣声熟悉，适应城市环境，全年易观测",
         "observationDifficulty": "极易"
       },
       {
         "sequence": 2,
-        "speciesName": "夜鹭",
+        "speciesName": "麻雀",
         "residencyType": "留鸟",
         "protectionLevel": "三有",
-        "ecologicalTraits": "昼伏夜出，黄昏时群飞归巢，体羽灰色，头顶黑色，常见于红树林岛和湖边",
+        "ecologicalTraits": "近人活动区密集，地面觅食，无惧人类，全年可见，观察难度极低",
         "observationDifficulty": "极易"
       }
     ]
@@ -74,9 +74,9 @@ differences:
 - `collection.returnedCount` = `collection.totalCount`
 - `collection.hasMore` = `false`
 - `collection.isComplete` = `true`
-- `collection.records` contains every valid row from the workbook in source order
+- `collection.records` contains every valid row from the JSON source in source order
 
-### `200 OK` with empty workbook data
+### `200 OK` with empty JSON source data
 
 ```json
 {
@@ -143,9 +143,9 @@ differences:
 
 ## Contract Rules
 
-- `collection.records` must preserve workbook row order.
+- `collection.records` must preserve JSON source row order.
 - Preview mode must never return more than 10 records.
-- Full mode must never truncate valid workbook rows.
+- Full mode must never truncate valid JSON source rows.
 - Missing `ecologicalTraits` must normalize to `暂无生态特征信息`.
 - Missing `observationDifficulty` must normalize to `暂无观测难度信息`.
 - The frontend may render a response only when it belongs to the latest

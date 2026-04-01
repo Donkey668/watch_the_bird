@@ -5,12 +5,12 @@
 - Node.js 20+ installed
 - npm available
 - Existing analysis page modules already run successfully
-- Workbook assets exist under `F:\VibeCoding\watch_the_bird\parkinfo`
-- Current workbook files at planning time:
-  - `Bijiashan Park.xlsx`
-  - `Fairylake Botanical Garden.xlsx`
-  - `Shenzhen Bay Park.xlsx`
-  - `Shenzhen Donghu Park.xlsx`
+- JSON assets exist under `F:\VibeCoding\watch_the_bird\parkinfo`
+- Current source files:
+  - `Bijiashan Park.json`
+  - `Fairylake Botanical Garden.json`
+  - `Shenzhen Bay Park.json`
+  - `Shenzhen Donghu Park.json`
 
 ## Run The App
 
@@ -49,30 +49,30 @@ Open `http://localhost:3000` and enable mobile emulation.
 12. Switch parks and confirm the species module refreshes to the new park
     without leaving stale cards or stale modal content.
 13. Validate empty-state and error-state copy by temporarily using an empty,
-    missing, or unreadable workbook fixture during development.
+    missing, or unreadable JSON fixture during development.
 14. Validate the list scrolls vertically with natural inertia and a lightweight
     snap effect, without introducing horizontal overflow.
 
-## Current Workbook Smoke-Test Notes
+## Current Source Smoke-Test Notes
 
-- At planning time, inspected workbook row counts (excluding headers) were:
-  - `深圳湾公园`: 32
-  - `笔架山公园`: 36
-  - `仙湖植物园`: 36
+- Current JSON row counts were:
+  - `深圳湾公园`: 30
+  - `笔架山公园`: 20
+  - `仙湖植物园`: 20
   - `深圳东湖公园`: 58
 - If these source files remain unchanged, the preview mode should still cap at
   10 and the full mode should match the inspected total counts above.
-- 2026-04-01 implementation smoke test:
-  - `深圳湾公园` preview response returned `10 / 32`
-  - `深圳湾公园` full response returned `32 / 32`
+- 2026-04-01 JSON migration smoke test:
+  - `深圳湾公园` preview response returned `10 / 30`
+  - `深圳湾公园` full response returned `30 / 30`
 
 ## Implementation Notes
 
-- Keep Excel parsing behind `GET /api/analysis/habitat-species-reference`.
-- Keep workbook path resolution inside the server runtime and do not expose file
+- Keep JSON source parsing behind `GET /api/analysis/habitat-species-reference`.
+- Keep source path resolution inside the server runtime and do not expose file
   paths to the browser.
-- Keep the park-to-workbook lookup explicit in
-  `lib/species/park-species-workbooks.ts`; do not derive filenames from `parkId`.
+- Keep the park-to-source lookup explicit in
+  `lib/species/park-species-sources.ts`; do not derive filenames from `parkId`.
 - Use Tailwind CSS + shadcn/ui primitives for the list and modal surface.
 - Use native scrolling plus CSS snap behavior for the mobile list interaction.
 - Keep chart scope as `N/A`.

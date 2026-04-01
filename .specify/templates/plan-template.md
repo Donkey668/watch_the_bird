@@ -28,7 +28,9 @@ Apache ECharts, [additional dependencies or NEEDS CLARIFICATION]
 **Performance Goals**: [domain-specific, e.g., API p95 < 200ms, chart render < 1s, or NEEDS CLARIFICATION]  
 **Constraints**: Backend interfaces MUST use `app/api/**/route.ts`; frontend
 components MUST use Tailwind CSS + shadcn/ui; charts MUST use Apache ECharts;
-user-facing product copy MUST default to Simplified Chinese  
+user-facing product copy MUST default to Simplified Chinese; when a better
+implementation path depends on a missing dependency, the dependency gap MUST be
+surfaced before fallback  
 **Scale/Scope**: [domain-specific, e.g., 10k users, 20 routes, 5 dashboards, or NEEDS CLARIFICATION]
 
 ## Constitution Check
@@ -45,6 +47,8 @@ user-facing product copy MUST default to Simplified Chinese
       default to Simplified Chinese unless an approved exception is recorded.
 - [ ] Any data visualization uses Apache ECharts and defines loading, empty,
       error, and responsive states.
+- [ ] Missing dependencies that block a more efficient implementation path are
+      identified early and surfaced to the user before fallback decisions are made.
 - [ ] Any exception is documented in `Complexity Tracking` and approved before
       implementation.
 

@@ -30,7 +30,7 @@
 
 ### Explicit exclusions
 
-- Do not expose raw workbook filenames to end users.
+- Do not expose raw source filenames to end users.
 - Do not require horizontal scrolling to read any field.
 - Do not introduce charts for this feature.
 
@@ -44,19 +44,19 @@
 
 ### Success state
 
-- Render a vertically scrollable card list in workbook order.
+- Render a vertically scrollable card list in source order.
 - Preview state shows at most 10 cards.
 - Full state shows all cards and removes or replaces the load-more trigger.
 - Each card is tappable and visually indicates interactivity.
 
 ### Empty state
 
-- If the workbook is readable but contains no valid records, show a dedicated
+- If the JSON source is readable but contains no valid records, show a dedicated
   Chinese empty-state message inside the module.
 
 ### Error state
 
-- If the workbook is missing or unreadable, show a scoped Chinese error state
+- If the JSON source is missing or unreadable, show a scoped Chinese error state
   inside the module.
 - The error state must not hide unrelated analysis modules above it.
 

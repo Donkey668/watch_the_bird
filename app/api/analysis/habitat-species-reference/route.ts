@@ -6,9 +6,9 @@ import {
   createSpeciesReferenceCollection,
   createSuccessSpeciesResponse,
   parseSpeciesReferenceView,
-  readSpeciesWorkbookRecords,
+  readSpeciesSourceRecords,
 } from "@/lib/species/habitat-species-reference";
-import { resolveParkSpeciesWorkbookSource } from "@/lib/species/park-species-workbooks";
+import { resolveParkSpeciesDataSource } from "@/lib/species/park-species-sources";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const source = await resolveParkSpeciesWorkbookSource(parkId);
+  const source = await resolveParkSpeciesDataSource(parkId);
   if (!source) {
     return Response.json(createInvalidParkSpeciesResponse(requestedAt), {
       status: 400,
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const records = await readSpeciesWorkbookRecords(source);
+    const records = await readSpeciesSourceRecords(source);
     const collection = createSpeciesReferenceCollection(records, view);
 
     if (collection.totalCount === 0) {

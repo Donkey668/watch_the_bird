@@ -2,16 +2,16 @@
 
 ## Overview
 
-This feature introduces no database persistence. It reads local Excel workbook
+This feature introduces no database persistence. It reads local JSON source
 assets, normalizes bird species rows for one selected park, and returns either
 a preview slice or the full list to the analysis screen.
 
 ## Entities
 
-### ParkSpeciesWorkbookSource
+### ParkSpeciesDataSource
 
 **Purpose**: Represents the server-side mapping between a preset park and its
-Excel workbook source.
+JSON source file.
 
 **Fields**:
 
@@ -19,19 +19,19 @@ Excel workbook source.
 |-------|------|-------------|
 | `parkId` | string | Existing preset park identifier from `lib/maps/park-options.ts` |
 | `parkName` | string | Human-readable park name used in the UI response |
-| `fileName` | string | Workbook filename inside `parkinfo/` |
-| `absolutePath` | string | Resolved server-only workbook path |
+| `fileName` | string | JSON filename inside `parkinfo/` |
+| `absolutePath` | string | Resolved server-only source path |
 | `sourceStatus` | enum | `available`, `missing`, or `unreadable` |
 
 **Validation rules**:
 
 - `parkId` must map to an existing preset park.
-- `fileName` must end with `.xlsx`.
-- `sourceStatus = available` requires the workbook file to exist and be readable.
+- `fileName` must end with `.json`.
+- `sourceStatus = available` requires the JSON source file to exist and be readable.
 
 **Relationships**:
 
-- One `ParkSpeciesWorkbookSource` belongs to one preset park.
+- One `ParkSpeciesDataSource` belongs to one preset park.
 - One source can produce many `BirdSpeciesRecord` rows.
 
 ### SpeciesReferenceRequest
@@ -53,7 +53,7 @@ Excel workbook source.
 
 **Relationships**:
 
-- One request resolves exactly one `ParkSpeciesWorkbookSource`.
+- One request resolves exactly one `ParkSpeciesDataSource`.
 - One request yields one `SpeciesReferenceResponse`.
 
 ### BirdSpeciesRecord
@@ -81,7 +81,7 @@ analysis page.
 
 **Relationships**:
 
-- Many `BirdSpeciesRecord` rows belong to one `ParkSpeciesWorkbookSource`.
+- Many `BirdSpeciesRecord` rows belong to one `ParkSpeciesDataSource`.
 - Many `BirdSpeciesRecord` rows can be included in one `SpeciesReferenceCollection`.
 
 ### SpeciesReferenceCollection
@@ -94,7 +94,7 @@ display.
 | Field | Type | Description |
 |-------|------|-------------|
 | `view` | enum | `preview` or `full` |
-| `totalCount` | integer | Total number of valid rows found in the workbook |
+| `totalCount` | integer | Total number of valid rows found in the JSON source |
 | `returnedCount` | integer | Number of rows returned in the current response |
 | `hasMore` | boolean | Whether additional rows remain beyond the current response |
 | `isComplete` | boolean | Whether the current response already includes all valid rows |
@@ -146,10 +146,9 @@ display.
 
 ## Derived State Rules
 
-- Preview mode returns the first 10 valid rows in workbook order.
-- Full mode returns all valid rows in workbook order.
-- The workbook header row is excluded from `totalCount`.
-- Workbook rows lacking required card fields are skipped only if they cannot
+- Preview mode returns the first 10 valid rows in source order.
+- Full mode returns all valid rows in source order.
+- JSON source rows lacking required card fields are skipped only if they cannot
   produce a meaningful species record after normalization.
 - Park switching invalidates prior preview/full results; the UI must only show
   the latest request’s response.
@@ -159,26 +158,26 @@ display.
 ### Preview Success
 
 1. Frontend requests `view=preview`.
-2. Route resolves the current workbook source and parses the workbook.
+2. Route resolves the current JSON source and parses the source file.
 3. Server normalizes all valid rows, then returns the first 10 or fewer rows.
 4. UI renders the preview list and conditionally shows `点击查看全部信息`.
 
 ### Full Success
 
 1. Frontend requests `view=full` for the current park.
-2. Route resolves and parses the same workbook source.
-3. Server returns every valid normalized row in workbook order.
+2. Route resolves and parses the same JSON source.
+3. Server returns every valid normalized row in source order.
 4. UI replaces preview mode with the complete list and removes the load-more trigger.
 
 ### Empty Source
 
-1. Workbook exists and is readable.
+1. JSON source exists and is readable.
 2. No valid data rows remain after normalization.
 3. API returns `requestStatus = empty`.
 4. UI renders a dedicated empty state instead of a blank list.
 
 ### Source Failure
 
-1. Workbook mapping fails, file is missing, or parsing is unreadable.
+1. Source mapping fails, file is missing, or parsing is unreadable.
 2. API returns either `invalid_park` or `failed`.
 3. UI shows a scoped error state and must not leave stale species cards visible.

@@ -1,16 +1,16 @@
 <!--
 Sync Impact Report
-Version change: 1.0.0 -> 1.1.0
+Version change: 1.1.0 -> 1.2.0
 Modified principles:
-- III. Tailwind CSS + shadcn/ui UI Standard -> III. Tailwind CSS + shadcn/ui + Simplified Chinese UI Standard
-Added sections:
 - None
+Added sections:
+- VI. Dependency Readiness Transparency
 Removed sections:
 - None
 Templates requiring updates:
 - updated: .specify/templates/plan-template.md
-- updated: .specify/templates/spec-template.md
 - updated: .specify/templates/tasks-template.md
+- reviewed/no change: .specify/templates/spec-template.md
 - not present: .specify/templates/commands/*.md
 - reviewed/no change: README.md
 - reviewed/no change: AGENTS.md
@@ -69,6 +69,17 @@ rejected alternatives, and impact scope before implementation begins.
 Rationale: constraints are only enforceable when they are visible at the
 specification, planning, and review stages.
 
+### VI. Dependency Readiness Transparency
+When a materially more efficient, more maintainable, or more constitution-
+aligned implementation path is blocked only because a required dependency is
+not installed, the team MUST notify the user about that dependency before
+defaulting to a weaker fallback. The notice MUST identify the missing package,
+binary, or runtime, explain why it enables the better path, and clarify whether
+installation is needed in the current environment. Silent fallback is allowed
+only when the user has already rejected installation or when the fallback is
+explicitly requested. Rationale: surfacing dependency gaps early lets the user
+choose the better path instead of inheriting avoidable technical debt.
+
 ## Technical Standards
 
 - Baseline stack: Next.js 16.2.1, React 19.2.4, TypeScript 5.x, and Tailwind
@@ -83,6 +94,9 @@ specification, planning, and review stages.
   unless an approved exception is recorded in the feature spec.
 - Visualization baseline: shared chart adapters and option builders SHOULD live
   in `components/charts/` or `lib/charts/`.
+- Dependency baseline: when a preferred implementation path depends on a
+  missing package, binary, runtime, or local tool, that dependency gap MUST be
+  surfaced to the user before adopting a slower or less capable workaround.
 - Documentation baseline: every feature spec MUST state the Route Handlers it
   needs, the frontend surfaces that call them, whether chart work is required
   or `N/A`, and any approved non-Chinese copy exception.
@@ -97,10 +111,14 @@ specification, planning, and review stages.
 - `tasks.md` MUST include distinct work items for Route Handlers, frontend
   integration, UI composition, Simplified Chinese copy changes, and ECharts
   implementation whenever those concerns exist in scope.
+- Planning and implementation work MUST surface missing dependencies whenever
+  they block a more efficient path; fallback tasks or shortcuts MUST document
+  why the preferred dependency-backed path was not taken.
 - Code review MUST block any change that bypasses Route Handlers, introduces a
   non-approved component library, uses a charting library other than Apache
-  ECharts, or introduces non-Chinese user-facing copy without a documented
-  exception.
+  ECharts, introduces non-Chinese user-facing copy without a documented
+  exception, or silently replaces a better dependency-backed path with an
+  undisclosed fallback.
 - Approved exceptions MUST include a migration or rollback plan when they
   create future debt against this constitution.
 
@@ -119,4 +137,4 @@ approved. `AGENTS.md` remains the execution guide for agent behavior, and
 reference. When those sources conflict with this constitution on project-level
 architecture or approved libraries, this constitution governs.
 
-**Version**: 1.1.0 | **Ratified**: 2026-03-31 | **Last Amended**: 2026-03-31
+**Version**: 1.2.0 | **Ratified**: 2026-03-31 | **Last Amended**: 2026-04-01

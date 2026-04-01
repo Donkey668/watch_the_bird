@@ -55,7 +55,7 @@ implementation and testing of each story.
 **Purpose**: Project initialization and basic structure
 
 - [ ] T001 Create route segments, shared directories, and feature folders per implementation plan
-- [ ] T002 Initialize feature dependencies, including shadcn/ui and Apache ECharts packages when required
+- [ ] T002 Verify feature dependencies and surface any missing package, binary, or runtime that blocks a better path before fallback; initialize approved dependencies such as shadcn/ui and Apache ECharts when required
 - [ ] T003 [P] Configure linting, formatting, and type-checking gates
 
 ---
@@ -256,4 +256,4 @@ With multiple developers:
 - Verify tests fail before implementing
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
-- Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence, bypassing Route Handlers, introducing non-approved UI/chart libraries, or adding non-Chinese user-facing copy without approval
+- Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence, bypassing Route Handlers, introducing non-approved UI/chart libraries, adding non-Chinese user-facing copy without approval, or silently choosing a weaker fallback because a better dependency is missing

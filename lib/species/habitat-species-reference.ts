@@ -1,10 +1,9 @@
 import { readFile } from "node:fs/promises";
-import { read, utils } from "xlsx";
 import type { ParkOption } from "@/lib/maps/park-options";
 import type {
-  ParkSpeciesWorkbookSource,
+  ParkSpeciesDataSource,
   ParkSpeciesSourceStatus,
-} from "@/lib/species/park-species-workbooks";
+} from "@/lib/species/park-species-sources";
 
 export const SPECIES_REFERENCE_VIEWS = ["preview", "full"] as const;
 export const SPECIES_REFERENCE_PREVIEW_LIMIT = 10;
@@ -44,6 +43,15 @@ export type SpeciesReferenceResponse = {
   collection: SpeciesReferenceCollection | null;
 };
 
+type RawSpeciesSourceRecord = {
+  序号?: unknown;
+  鸟种名称?: unknown;
+  居留类型?: unknown;
+  保护级别?: unknown;
+  生态特征?: unknown;
+  观测难度?: unknown;
+};
+
 function normalizeText(value: unknown) {
   return String(value ?? "").trim();
 }
@@ -54,23 +62,26 @@ function normalizeRequiredText(value: unknown, fallback: string) {
 }
 
 function normalizeRecord(
-  row: unknown[],
+  row: RawSpeciesSourceRecord,
   fallbackSequence: number,
 ): BirdSpeciesRecord | null {
-  const speciesName = normalizeText(row[1]);
+  const speciesName = normalizeText(row["鸟种名称"]);
   if (!speciesName) {
     return null;
   }
 
-  const parsedSequence = Number.parseInt(normalizeText(row[0]), 10);
+  const parsedSequence = Number.parseInt(normalizeText(row["序号"]), 10);
 
   return {
     sequence: Number.isFinite(parsedSequence) ? parsedSequence : fallbackSequence,
     speciesName,
-    residencyType: normalizeRequiredText(row[2], "暂无居留类型信息"),
-    protectionLevel: normalizeRequiredText(row[3], "暂无保护级别信息"),
-    ecologicalTraits: normalizeRequiredText(row[4], "暂无生态特征信息"),
-    observationDifficulty: normalizeRequiredText(row[5], "暂无观测难度信息"),
+    residencyType: normalizeRequiredText(row["居留类型"], "暂无居留类型信息"),
+    protectionLevel: normalizeRequiredText(row["保护级别"], "暂无保护级别信息"),
+    ecologicalTraits: normalizeRequiredText(row["生态特征"], "暂无生态特征信息"),
+    observationDifficulty: normalizeRequiredText(
+      row["观测难度"],
+      "暂无观测难度信息",
+    ),
   };
 }
 
@@ -80,26 +91,41 @@ export function parseSpeciesReferenceView(
   return value === "full" ? "full" : "preview";
 }
 
-export async function readSpeciesWorkbookRecords(
-  source: ParkSpeciesWorkbookSource,
-) {
-  const workbookBuffer = await readFile(source.absolutePath);
-  const workbook = read(workbookBuffer, {
-    type: "buffer",
-    cellText: true,
-    dense: false,
-  });
-  const sheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[sheetName];
+function isRawSpeciesSourceRecord(value: unknown): value is RawSpeciesSourceRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
-  const rows = utils.sheet_to_json<unknown[]>(worksheet, {
-    header: 1,
-    raw: false,
-    defval: "",
-  });
+function isRawSpeciesSourceRecordArray(
+  value: unknown,
+): value is RawSpeciesSourceRecord[] {
+  return Array.isArray(value) && value.every(isRawSpeciesSourceRecord);
+}
+
+function extractRawSpeciesSourceRecords(payload: unknown) {
+  if (isRawSpeciesSourceRecordArray(payload)) {
+    return payload;
+  }
+
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "records" in payload &&
+    isRawSpeciesSourceRecordArray(payload.records)
+  ) {
+    return payload.records;
+  }
+
+  throw new Error("Species JSON source returned an invalid payload.");
+}
+
+export async function readSpeciesSourceRecords(
+  source: ParkSpeciesDataSource,
+) {
+  const rawContent = await readFile(source.absolutePath, "utf8");
+  const payload = JSON.parse(rawContent) as unknown;
+  const rows = extractRawSpeciesSourceRecords(payload);
 
   return rows
-    .slice(1)
     .map((row, index) => normalizeRecord(row, index + 1))
     .filter((record): record is BirdSpeciesRecord => record !== null);
 }
