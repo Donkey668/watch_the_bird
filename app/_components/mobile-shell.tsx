@@ -19,6 +19,7 @@ import {
   type AuthDialogMode,
 } from "./login-register-dialog";
 import { RecordsScreen } from "./records-screen";
+import { RecordsAuthRequiredDialog } from "./records-auth-required-dialog";
 import { ScreenFrame } from "./screen-frame";
 import { TopNav, type ScreenId } from "./top-nav";
 
@@ -27,6 +28,8 @@ const TRANSITION_MS = 280;
 type MobileShellProps = {
   initialAuthSession: AuthSessionSnapshot;
 };
+
+type AuthDialogSource = "entry" | "records";
 
 function readLandscapeState() {
   if (typeof window === "undefined") {
@@ -47,6 +50,11 @@ export function MobileShell({ initialAuthSession }: MobileShellProps) {
   const [isLoginSubmitting, setIsLoginSubmitting] = useState(false);
   const [isLogoutSubmitting, setIsLogoutSubmitting] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [authDialogSource, setAuthDialogSource] =
+    useState<AuthDialogSource>("entry");
+  const [isRecordsReminderOpen, setIsRecordsReminderOpen] = useState(false);
+  const [recordsAuthDismissedVersion, setRecordsAuthDismissedVersion] =
+    useState(0);
 
   const activeScreenRef = useRef<ScreenId>("analysis");
   const queuedScreenRef = useRef<ScreenId | null>(null);
@@ -157,12 +165,17 @@ export function MobileShell({ initialAuthSession }: MobileShellProps) {
   }, [clearTransitionTimer]);
 
   const openAuthDialog = useCallback(
-    (mode: Exclude<AuthDialogMode, null>) => {
+    (
+      mode: Exclude<AuthDialogMode, null>,
+      source: AuthDialogSource = "entry",
+    ) => {
       if (isLoginSubmitting) {
         return;
       }
 
       setLoginError(null);
+      setAuthDialogSource(source);
+      setIsRecordsReminderOpen(false);
       setAuthDialogMode(mode);
     },
     [isLoginSubmitting],
@@ -173,9 +186,18 @@ export function MobileShell({ initialAuthSession }: MobileShellProps) {
       return;
     }
 
+    const shouldOpenRecordsReminder =
+      authDialogSource === "records" && authSession.status === "guest";
+
     setAuthDialogMode(null);
     setLoginError(null);
-  }, [isLoginSubmitting]);
+    setAuthDialogSource("entry");
+
+    if (shouldOpenRecordsReminder) {
+      setRecordsAuthDismissedVersion((current) => current + 1);
+      setIsRecordsReminderOpen(true);
+    }
+  }, [authDialogSource, authSession.status, isLoginSubmitting]);
 
   const handleLoginSubmit = useCallback(
     async ({
@@ -220,6 +242,8 @@ export function MobileShell({ initialAuthSession }: MobileShellProps) {
             authenticatedAt: new Date().toISOString(),
           });
           setAuthDialogMode(null);
+          setAuthDialogSource("entry");
+          setIsRecordsReminderOpen(false);
           setLoginError(null);
           return;
         }
@@ -240,6 +264,12 @@ export function MobileShell({ initialAuthSession }: MobileShellProps) {
     [],
   );
 
+  useEffect(() => {
+    if (authSession.status === "authenticated") {
+      setIsRecordsReminderOpen(false);
+    }
+  }, [authSession.status]);
+
   const handleLogout = useCallback(async () => {
     if (isLogoutSubmitting) {
       return;
@@ -255,11 +285,20 @@ export function MobileShell({ initialAuthSession }: MobileShellProps) {
 
       if (response.ok) {
         setAuthSession(GUEST_AUTH_SESSION);
+        setAuthDialogMode(null);
+        setLoginError(null);
+        setAuthDialogSource("entry");
+        setIsRecordsReminderOpen(false);
+        setRecordsAuthDismissedVersion((current) => current + 1);
       }
     } finally {
       setIsLogoutSubmitting(false);
     }
   }, [isLogoutSubmitting]);
+
+  const handleRequireRecordsAuth = useCallback(() => {
+    openAuthDialog("login", "records");
+  }, [openAuthDialog]);
 
   const isAuthDialogOpen = authDialogMode !== null;
 
@@ -338,7 +377,11 @@ export function MobileShell({ initialAuthSession }: MobileShellProps) {
             activeId={activeScreen}
             reduceMotion={reduceMotion}
           >
-            <RecordsScreen />
+            <RecordsScreen
+              authSession={authSession}
+              authPromptDismissedVersion={recordsAuthDismissedVersion}
+              onRequireAuth={handleRequireRecordsAuth}
+            />
           </ScreenFrame>
         </main>
       )}
@@ -349,6 +392,12 @@ export function MobileShell({ initialAuthSession }: MobileShellProps) {
         loginError={loginError}
         onClose={closeAuthDialog}
         onLoginSubmit={handleLoginSubmit}
+      />
+      <RecordsAuthRequiredDialog
+        open={isRecordsReminderOpen}
+        title="请登录个人空间"
+        message="请登录个人空间！"
+        onOpenChange={setIsRecordsReminderOpen}
       />
     </div>
   );

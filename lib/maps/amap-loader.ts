@@ -9,6 +9,8 @@ export type AMapMapInstance = {
   add: (overlay: unknown) => void;
   destroy: () => void;
   setCenter: (position: [number, number]) => void;
+  on?: (eventName: string, handler: (event: unknown) => void) => void;
+  off?: (eventName: string, handler: (event: unknown) => void) => void;
 };
 
 export type AMapMarkerInstance = {

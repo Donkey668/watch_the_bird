@@ -6,7 +6,8 @@ export type LoginRequestPayload = {
 export type LoginRequestStatus =
   | "success"
   | "invalid_input"
-  | "invalid_credentials";
+  | "account_not_found"
+  | "invalid_password";
 
 export type LoginResponse = {
   requestStatus: LoginRequestStatus;
@@ -69,15 +70,22 @@ export function authenticateLogin(payload: unknown): {
     };
   }
 
-  if (
-    normalizedAssistantAccount !== TEST_ACCOUNT.assistantAccount ||
-    normalizedUserPassword !== TEST_ACCOUNT.userPassword
-  ) {
+  if (normalizedAssistantAccount !== TEST_ACCOUNT.assistantAccount) {
     return {
       statusCode: 401,
       response: buildLoginResponse(
-        "invalid_credentials",
-        "助手账号或用户密码错误。",
+        "account_not_found",
+        "请先注册助手账号！",
+      ),
+    };
+  }
+
+  if (normalizedUserPassword !== TEST_ACCOUNT.userPassword) {
+    return {
+      statusCode: 401,
+      response: buildLoginResponse(
+        "invalid_password",
+        "用户密码错误。",
       ),
     };
   }
