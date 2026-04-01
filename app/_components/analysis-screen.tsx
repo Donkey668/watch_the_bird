@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DEFAULT_PARK, type ParkId } from "@/lib/maps/park-options";
 import { AnalysisBirdingOutlook } from "./analysis-birding-outlook";
+import { AnalysisHabitatSpeciesReference } from "./analysis-habitat-species-reference";
 import { AnalysisMapPanel } from "./analysis-map-panel";
 
 export function AnalysisScreen() {
@@ -16,6 +17,10 @@ export function AnalysisScreen() {
         onParkChange={setSelectedParkId}
       />
       <AnalysisBirdingOutlook parkId={selectedParkId} />
+      <AnalysisHabitatSpeciesReference
+        key={selectedParkId}
+        parkId={selectedParkId}
+      />
 
       <Card>
         <CardHeader>
