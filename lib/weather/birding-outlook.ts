@@ -82,7 +82,7 @@ export type ObservationConfidenceSummary = {
 };
 
 export type AnalysisOverviewSnapshot = {
-  title: "分析总览";
+  title: "栖息地环境指标";
   beijingTime: BeijingTimeSummary;
   habitatActivity: HabitatActivitySummary;
   migrationSignal: MigrationSignalSummary;

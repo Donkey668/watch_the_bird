@@ -10,6 +10,7 @@ const AMAP_WEATHER_ENDPOINT =
   "https://restapi.amap.com/v3/weather/weatherInfo";
 const WEATHER_FAILURE_MESSAGE =
   "\u5929\u6c14\u4fe1\u606f\u6682\u65f6\u4e0d\u53ef\u7528\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002";
+const WEATHER_CITY_DISPLAY_NAME = "\u6df1\u5733\u5e02";
 
 type AMapLiveWeather = {
   adcode?: string;
@@ -60,16 +61,6 @@ function createWeatherDetails(
 ): WeatherDetail[] {
   const details: WeatherDetail[] = [
     {
-      key: "district",
-      label: "\u6240\u5728\u533a\u53bf",
-      value: context.districtName,
-    },
-    {
-      key: "districtCode",
-      label: "\u533a\u53bf\u7f16\u7801",
-      value: context.districtCode,
-    },
-    {
       key: "province",
       label: "\u7701\u4efd",
       value: readText(live.province) || "\u6682\u65e0",
@@ -77,7 +68,12 @@ function createWeatherDetails(
     {
       key: "city",
       label: "\u57ce\u5e02",
-      value: readText(live.city) || context.cityName,
+      value: WEATHER_CITY_DISPLAY_NAME,
+    },
+    {
+      key: "district",
+      label: "\u6240\u5728\u533a\u53bf",
+      value: context.districtName,
     },
     {
       key: "weather",

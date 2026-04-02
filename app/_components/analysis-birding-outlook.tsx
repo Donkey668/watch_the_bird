@@ -180,10 +180,7 @@ export function AnalysisBirdingOutlook({
   const birdingValue =
     birdingIndex?.status === "success" ? birdingIndex.level : null;
   const birdingCaption =
-    birdingIndex?.status === "success"
-      ? "\u5df2\u6839\u636e\u5f53\u524d\u5929\u6c14\u5feb\u7167\u5b8c\u6210\u5224\u65ad"
-      : birdingIndex?.failureReason ||
-        "\u5929\u6c14\u4fe1\u606f\u53ef\u7528\uff0c\u4f46\u89c2\u9e1f\u6307\u6570\u6682\u4e0d\u53ef\u7528";
+    birdingIndex?.status === "success" ? null : "\u89c2\u9e1f\u6307\u6570\u4e0d\u53ef\u7528\uff01";
 
   return (
     <Card className="overflow-hidden" aria-live="polite">
@@ -192,7 +189,7 @@ export function AnalysisBirdingOutlook({
           {"\u5929\u6c14\u4e0e\u89c2\u9e1f\u6307\u6570"}
         </CardTitle>
         <CardDescription className="text-xs leading-5">
-          {`\u6839\u636e ${selectedPark.name} \u6240\u5728\u7684 ${districtName} \u5b9e\u65f6\u5929\u6c14\uff0c\u7ed9\u51fa\u4eca\u5929\u7684\u89c2\u9e1f\u9002\u5b9c\u5ea6\u5224\u65ad\u3002`}
+          {`\u6839\u636e ${selectedPark.name} \u6240\u5728\u7684 ${districtName} \u5b9e\u65f6\u5929\u6c14\uff0c\u83b7\u53d6\u4eca\u65e5\u89c2\u9e1f\u6307\u6570\u3002`}
         </CardDescription>
       </CardHeader>
 
@@ -239,9 +236,11 @@ export function AnalysisBirdingOutlook({
                   <p className="text-2xl font-semibold leading-none">
                     {birdingValue ?? "\u6682\u4e0d\u53ef\u7528"}
                   </p>
-                  <p className="text-sm leading-6 opacity-80">
-                    {birdingCaption}
-                  </p>
+                  {birdingCaption ? (
+                    <p className="text-sm leading-6 opacity-80">
+                      {birdingCaption}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="rounded-full border border-current/15 bg-white/55 px-3 py-1 text-xs font-medium">
                   {response.park?.districtName ?? districtName}
@@ -268,14 +267,6 @@ export function AnalysisBirdingOutlook({
               overview={analysisOverview}
               embedded
             />
-
-            {requestStatus === "partial" ? (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-                {
-                  "\u5df2\u4fdd\u7559\u5929\u6c14\u4fe1\u606f\u5c55\u793a\uff0c\u4f60\u53ef\u4ee5\u7a0d\u540e\u91cd\u65b0\u83b7\u53d6\u89c2\u9e1f\u6307\u6570\u3002"
-                }
-              </div>
-            ) : null}
 
             <div className="flex items-center justify-between gap-3 text-xs leading-5 text-[var(--text-secondary)]">
               <span>

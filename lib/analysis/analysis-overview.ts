@@ -1,4 +1,4 @@
-import { getBeijingTimeContext } from "@/lib/time/beijing-time";
+﻿import { getBeijingTimeContext } from "@/lib/time/beijing-time";
 import type {
   AnalysisOverviewSnapshot,
   BirdingIndexAssessment,
@@ -79,7 +79,7 @@ export function createAnalysisOverviewSnapshot(
   );
 
   return {
-    title: "分析总览",
+    title: "栖息地环境指标",
     beijingTime: {
       displayText: beijingTime.displayText,
       isoTimestamp: beijingTime.isoTimestamp,

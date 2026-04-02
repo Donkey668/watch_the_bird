@@ -236,7 +236,7 @@ export function AnalysisMapPanel({
         <CardTitle className="text-sm">{"\u516c\u56ed\u5730\u56fe"}</CardTitle>
         <CardDescription className="text-xs leading-5">
           {
-            "\u9009\u62e9\u9884\u8bbe\u516c\u56ed\uff0c\u5e76\u8ba9\u5f53\u524d\u5206\u6790\u4e0a\u4e0b\u6587\u59cb\u7ec8\u548c\u5730\u56fe\u4e0a\u7684\u6d3b\u52a8\u6807\u8bb0\u4fdd\u6301\u4e00\u81f4\u3002"
+            "\u9009\u62e9\u9884\u8bbe\u516c\u56ed\u4ee5\u67e5\u770b\u8be6\u7ec6\u4fe1\u606f\u3002"
           }
         </CardDescription>
       </CardHeader>

@@ -302,6 +302,26 @@ export function MobileShell({ initialAuthSession }: MobileShellProps) {
 
   const isAuthDialogOpen = authDialogMode !== null;
 
+  function renderAuthEntry(className?: string) {
+    return (
+      <div
+        className={cn(
+          "flex justify-end",
+          isAuthDialogOpen && "pointer-events-none opacity-70",
+          className,
+        )}
+      >
+        <AuthEntry
+          session={authSession}
+          isLogoutSubmitting={isLogoutSubmitting}
+          onOpenLogin={() => openAuthDialog("login")}
+          onOpenRegister={() => openAuthDialog("register")}
+          onLogout={handleLogout}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="relative mx-auto h-dvh w-full max-w-[430px] overflow-hidden border-x border-[var(--border-subtle)] bg-[radial-gradient(circle_at_top,_#fcfff8,_#f3f9ec_58%,_#edf4e8)] shadow-[0_0_0_1px_rgba(174,194,166,0.2),0_28px_88px_-34px_rgba(30,56,32,0.35)]">
       <TopNav
@@ -309,22 +329,6 @@ export function MobileShell({ initialAuthSession }: MobileShellProps) {
         onSelect={handleSelect}
         isTransitioning={isTransitioning}
       />
-      <div className="absolute inset-x-0 top-[calc(var(--top-nav-height)+0.5rem)] z-20 px-4">
-        <div
-          className={cn(
-            "mx-auto flex w-full max-w-[26rem] justify-end transition-opacity duration-200",
-            isAuthDialogOpen && "pointer-events-none opacity-70",
-          )}
-        >
-          <AuthEntry
-            session={authSession}
-            isLogoutSubmitting={isLogoutSubmitting}
-            onOpenLogin={() => openAuthDialog("login")}
-            onOpenRegister={() => openAuthDialog("register")}
-            onLogout={handleLogout}
-          />
-        </div>
-      </div>
 
       {isLandscape ? (
         <main
@@ -333,7 +337,8 @@ export function MobileShell({ initialAuthSession }: MobileShellProps) {
             isAuthDialogOpen && "pointer-events-none",
           )}
         >
-          <div className="mx-auto w-full max-w-[26rem]">
+          <div className="mx-auto flex w-full max-w-[26rem] flex-col gap-3">
+            {renderAuthEntry("mt-[27px]")}
             <Card className="border-orange-300 bg-orange-50/75">
               <CardHeader>
                 <CardTitle className="text-orange-900">
@@ -363,25 +368,34 @@ export function MobileShell({ initialAuthSession }: MobileShellProps) {
             activeId={activeScreen}
             reduceMotion={reduceMotion}
           >
-            <AnalysisScreen />
+            <div className="relative">
+              {renderAuthEntry("absolute right-0 top-0 z-10")}
+              <AnalysisScreen />
+            </div>
           </ScreenFrame>
           <ScreenFrame
             id="identify"
             activeId={activeScreen}
             reduceMotion={reduceMotion}
           >
-            <IdentifyScreen />
+            <div className="relative">
+              {renderAuthEntry("absolute right-0 top-0 z-10")}
+              <IdentifyScreen />
+            </div>
           </ScreenFrame>
           <ScreenFrame
             id="records"
             activeId={activeScreen}
             reduceMotion={reduceMotion}
           >
-            <RecordsScreen
-              authSession={authSession}
-              authPromptDismissedVersion={recordsAuthDismissedVersion}
-              onRequireAuth={handleRequireRecordsAuth}
-            />
+            <div className="relative">
+              {renderAuthEntry("absolute right-0 top-0 z-10")}
+              <RecordsScreen
+                authSession={authSession}
+                authPromptDismissedVersion={recordsAuthDismissedVersion}
+                onRequireAuth={handleRequireRecordsAuth}
+              />
+            </div>
           </ScreenFrame>
         </main>
       )}

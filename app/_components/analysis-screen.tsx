@@ -20,7 +20,7 @@ export function AnalysisScreen() {
           观鸟指数分析
         </h1>
         <p className="text-sm leading-6 text-[var(--text-secondary)]">
-          围绕当前公园查看地图、天气变化、观鸟指数与栖息地鸟种参考。
+          围绕当前公园查看地图、天气变化、观鸟指数与鸟种参考。
         </p>
       </header>
 
