@@ -25,13 +25,17 @@ import {
   clipNoteCharacters,
   countNoteCharacters,
   getCurrentBeijingDateTime,
+  isValidObservationDate,
   type NotebookCoordinates,
   type NotebookFieldErrors,
   type NotebookLocationSource,
   type NotebookRecordInput,
   type NotebookRecordSnapshot,
 } from "@/lib/records/notebook";
-import { RecordMapPickerDialog } from "./record-map-picker-dialog";
+import {
+  RecordMapPickerDialog,
+  type RecordMapPickerResult,
+} from "./record-map-picker-dialog";
 
 type RecordEditorDialogProps = {
   open: boolean;
@@ -67,6 +71,12 @@ type LocationStatus = {
   tone: "info" | "error";
   message: string;
 } | null;
+
+type ObservationDateParts = {
+  year: string;
+  month: string;
+  day: string;
+};
 
 type LocationResolveResponse = {
   requestStatus: "success" | "invalid_input" | "failed";
@@ -107,21 +117,59 @@ function createInitialState(
   };
 }
 
-function getDateOptions(selectedDate: string) {
-  const center = new Date(`${selectedDate}T00:00:00`);
-  if (Number.isNaN(center.getTime())) {
-    return getDateOptions(getCurrentBeijingDateTime().observationDate);
+function getObservationDateParts(value: string): ObservationDateParts {
+  const safeValue = isValidObservationDate(value)
+    ? value
+    : getCurrentBeijingDateTime().observationDate;
+  const [year = "2000", month = "01", day = "01"] = safeValue.split("-");
+
+  return {
+    year,
+    month,
+    day,
+  };
+}
+
+function getDayCount(year: string, month: string) {
+  const numericYear = Number(year);
+  const numericMonth = Number(month);
+
+  if (!Number.isInteger(numericYear) || !Number.isInteger(numericMonth)) {
+    return 31;
   }
 
-  return Array.from({ length: 731 }, (_, index) => {
-    const currentDate = new Date(center);
-    currentDate.setDate(center.getDate() + index - 365);
+  if (numericMonth < 1 || numericMonth > 12) {
+    return 31;
+  }
 
-    const year = currentDate.getFullYear();
-    const month = `${currentDate.getMonth() + 1}`.padStart(2, "0");
-    const day = `${currentDate.getDate()}`.padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  });
+  return new Date(numericYear, numericMonth, 0).getDate();
+}
+
+function getYearOptions(selectedYear: string) {
+  const currentYear = Number(getCurrentBeijingDateTime().observationDate.slice(0, 4));
+  const numericSelectedYear = Number(selectedYear);
+  const baseYear = Number.isInteger(numericSelectedYear)
+    ? numericSelectedYear
+    : currentYear;
+  const startYear = Math.min(currentYear - 10, baseYear - 5);
+  const endYear = Math.max(currentYear + 1, baseYear + 5);
+
+  return Array.from(
+    { length: endYear - startYear + 1 },
+    (_, index) => `${startYear + index}`,
+  );
+}
+
+function getMonthOptions() {
+  return Array.from({ length: 12 }, (_, index) =>
+    `${index + 1}`.padStart(2, "0"),
+  );
+}
+
+function getDayOptions(year: string, month: string) {
+  return Array.from({ length: getDayCount(year, month) }, (_, index) =>
+    `${index + 1}`.padStart(2, "0"),
+  );
 }
 
 function getHourMinuteParts(time: string) {
@@ -221,7 +269,9 @@ export function RecordEditorDialog({
   const timeTriggerRef = useRef<HTMLButtonElement | null>(null);
   const datePanelRef = useRef<HTMLDivElement | null>(null);
   const timePanelRef = useRef<HTMLDivElement | null>(null);
-  const dateListRef = useRef<HTMLDivElement | null>(null);
+  const yearListRef = useRef<HTMLDivElement | null>(null);
+  const monthListRef = useRef<HTMLDivElement | null>(null);
+  const dayListRef = useRef<HTMLDivElement | null>(null);
   const hourListRef = useRef<HTMLDivElement | null>(null);
   const minuteListRef = useRef<HTMLDivElement | null>(null);
 
@@ -271,10 +321,10 @@ export function RecordEditorDialog({
 
   useEffect(() => {
     if (activePicker === "date") {
-      scrollSelectedIntoView(
-        dateListRef,
-        `[data-date-value="${draft.observationDate}"]`,
-      );
+      const { year, month, day } = getObservationDateParts(draft.observationDate);
+      scrollSelectedIntoView(yearListRef, `[data-year-value="${year}"]`);
+      scrollSelectedIntoView(monthListRef, `[data-month-value="${month}"]`);
+      scrollSelectedIntoView(dayListRef, `[data-day-value="${day}"]`);
       return;
     }
 
@@ -289,9 +339,18 @@ export function RecordEditorDialog({
     () => countNoteCharacters(draft.note),
     [draft.note],
   );
-  const dateOptions = useMemo(
-    () => getDateOptions(draft.observationDate),
+  const selectedDateParts = useMemo(
+    () => getObservationDateParts(draft.observationDate),
     [draft.observationDate],
+  );
+  const yearOptions = useMemo(
+    () => getYearOptions(selectedDateParts.year),
+    [selectedDateParts.year],
+  );
+  const monthOptions = useMemo(() => getMonthOptions(), []);
+  const dayOptions = useMemo(
+    () => getDayOptions(selectedDateParts.year, selectedDateParts.month),
+    [selectedDateParts.month, selectedDateParts.year],
   );
   const hourOptions = useMemo(
     () =>
@@ -348,6 +407,27 @@ export function RecordEditorDialog({
     clearNamedFieldErrors("birdPoint", "coordinates");
   }
 
+  function updateObservationDatePart(
+    part: keyof ObservationDateParts,
+    value: string,
+  ) {
+    const nextParts = {
+      ...getObservationDateParts(draft.observationDate),
+      [part]: value,
+    };
+    const maxDay = getDayCount(nextParts.year, nextParts.month);
+    const numericDay = Number(nextParts.day);
+    const normalizedDay =
+      Number.isInteger(numericDay) && numericDay > 0
+        ? Math.min(numericDay, maxDay)
+        : 1;
+
+    updateDraft(
+      "observationDate",
+      `${nextParts.year}-${nextParts.month}-${`${normalizedDay}`.padStart(2, "0")}`,
+    );
+  }
+
   function updateObservationTime(nextHour: string, nextMinute: string) {
     updateDraft("observationTime", `${nextHour}:${nextMinute}`);
   }
@@ -377,7 +457,7 @@ export function RecordEditorDialog({
 
   async function resolveCoordinates(
     coordinates: NotebookCoordinates,
-    source: "device" | "map",
+    source: "device",
   ) {
     setIsResolvingLocation(true);
     setLocationStatus(null);
@@ -472,6 +552,26 @@ export function RecordEditorDialog({
         message: getLocationErrorMessage(error as GeolocationPositionError | Error),
       });
     }
+  }
+
+  function handleMapLocationConfirm(result: RecordMapPickerResult) {
+    setDraft((current) => ({
+      ...current,
+      birdPoint: result.label,
+      locationSource: "map",
+      coordinates: result.coordinates,
+    }));
+    setIsDirty(true);
+    setSubmitError(null);
+    clearNamedFieldErrors("birdPoint", "coordinates");
+    setLocationStatus(
+      result.usedFallbackLabel
+        ? {
+            tone: "info",
+            message: "暂未获取到详细地址，已使用经纬度填充鸟点。",
+          }
+        : null,
+    );
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -587,28 +687,95 @@ export function RecordEditorDialog({
                   {activePicker === "date" ? (
                     <div
                       ref={datePanelRef}
-                      className="absolute left-0 top-[calc(100%+0.5rem)] z-30 w-[14rem] max-w-[calc(100vw-4rem)] rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-2 shadow-[0_18px_40px_-24px_rgba(31,42,31,0.55)]"
+                      className="absolute left-0 top-[calc(100%+0.5rem)] z-30 w-[18rem] max-w-[calc(100vw-4rem)] rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-3 shadow-[0_18px_40px_-24px_rgba(31,42,31,0.55)]"
                     >
-                      <div
-                        ref={dateListRef}
-                        className="max-h-52 space-y-1 overflow-y-auto overscroll-contain snap-y snap-mandatory scroll-smooth pr-1"
-                      >
-                        {dateOptions.map((dateValue) => (
-                          <button
-                            key={dateValue}
-                            type="button"
-                            data-date-value={dateValue}
-                            onClick={() => updateDraft("observationDate", dateValue)}
-                            className={cn(
-                              "flex h-10 w-full snap-center items-center rounded-xl px-3 text-left text-sm transition-colors",
-                              draft.observationDate === dateValue
-                                ? "bg-emerald-600 text-white"
-                                : "text-[var(--text-primary)] hover:bg-[var(--surface-muted)]",
-                            )}
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-[var(--text-secondary)]">
+                            年
+                          </p>
+                          <div
+                            ref={yearListRef}
+                            className="max-h-52 space-y-1 overflow-y-auto overscroll-contain snap-y snap-mandatory scroll-smooth pr-1"
                           >
-                            {dateValue}
-                          </button>
-                        ))}
+                            {yearOptions.map((yearValue) => (
+                              <button
+                                key={yearValue}
+                                type="button"
+                                data-year-value={yearValue}
+                                onClick={() =>
+                                  updateObservationDatePart("year", yearValue)
+                                }
+                                className={cn(
+                                  "flex h-10 w-full snap-center items-center justify-center rounded-xl text-sm transition-colors",
+                                  selectedDateParts.year === yearValue
+                                    ? "bg-emerald-600 text-white"
+                                    : "text-[var(--text-primary)] hover:bg-[var(--surface-muted)]",
+                                )}
+                              >
+                                {yearValue}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-[var(--text-secondary)]">
+                            月
+                          </p>
+                          <div
+                            ref={monthListRef}
+                            className="max-h-52 space-y-1 overflow-y-auto overscroll-contain snap-y snap-mandatory scroll-smooth pr-1"
+                          >
+                            {monthOptions.map((monthValue) => (
+                              <button
+                                key={monthValue}
+                                type="button"
+                                data-month-value={monthValue}
+                                onClick={() =>
+                                  updateObservationDatePart("month", monthValue)
+                                }
+                                className={cn(
+                                  "flex h-10 w-full snap-center items-center justify-center rounded-xl text-sm transition-colors",
+                                  selectedDateParts.month === monthValue
+                                    ? "bg-emerald-600 text-white"
+                                    : "text-[var(--text-primary)] hover:bg-[var(--surface-muted)]",
+                                )}
+                              >
+                                {monthValue}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-[var(--text-secondary)]">
+                            日
+                          </p>
+                          <div
+                            ref={dayListRef}
+                            className="max-h-52 space-y-1 overflow-y-auto overscroll-contain snap-y snap-mandatory scroll-smooth pr-1"
+                          >
+                            {dayOptions.map((dayValue) => (
+                              <button
+                                key={dayValue}
+                                type="button"
+                                data-day-value={dayValue}
+                                onClick={() =>
+                                  updateObservationDatePart("day", dayValue)
+                                }
+                                className={cn(
+                                  "flex h-10 w-full snap-center items-center justify-center rounded-xl text-sm transition-colors",
+                                  selectedDateParts.day === dayValue
+                                    ? "bg-emerald-600 text-white"
+                                    : "text-[var(--text-primary)] hover:bg-[var(--surface-muted)]",
+                                )}
+                              >
+                                {dayValue}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ) : null}
@@ -900,9 +1067,7 @@ export function RecordEditorDialog({
         open={isMapPickerOpen}
         initialCoordinates={draft.coordinates}
         onOpenChange={setIsMapPickerOpen}
-        onConfirm={(coordinates) => {
-          void resolveCoordinates(coordinates, "map");
-        }}
+        onConfirm={handleMapLocationConfirm}
       />
     </>
   );

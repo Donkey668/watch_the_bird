@@ -8,14 +8,29 @@ type AMapSecurityConfig = {
 export type AMapMapInstance = {
   add: (overlay: unknown) => void;
   destroy: () => void;
+  getCenter?: () => AMapLngLatInstance;
   setCenter: (position: [number, number]) => void;
   on?: (eventName: string, handler: (event: unknown) => void) => void;
   off?: (eventName: string, handler: (event: unknown) => void) => void;
 };
 
+export type AMapLngLatInstance = {
+  getLng?: () => number;
+  getLat?: () => number;
+  lng?: number;
+  lat?: number;
+};
+
 export type AMapMarkerInstance = {
   setMap?: (map: unknown) => void;
   setPosition: (position: [number, number]) => void;
+};
+
+export type AMapGeocoderInstance = {
+  getAddress: (
+    location: [number, number],
+    callback: (status: string, result: unknown) => void,
+  ) => void;
 };
 
 export type AMapNamespace = {
@@ -24,6 +39,7 @@ export type AMapNamespace = {
     options?: Record<string, unknown>,
   ) => AMapMapInstance;
   Marker: new (options?: Record<string, unknown>) => AMapMarkerInstance;
+  Geocoder: new (options?: Record<string, unknown>) => AMapGeocoderInstance;
 };
 
 declare global {
@@ -33,6 +49,7 @@ declare global {
 }
 
 const AMAP_VERSION = "2.0";
+const AMAP_DEFAULT_PLUGINS = ["AMap.Geocoder"];
 
 let amapPromise: Promise<AMapNamespace> | null = null;
 
@@ -113,7 +130,7 @@ export async function loadAMap() {
         AMapLoader.load({
           key,
           version: AMAP_VERSION,
-          plugins: [],
+          plugins: AMAP_DEFAULT_PLUGINS,
         }),
       )
       .then((AMap) => AMap as unknown as AMapNamespace)
