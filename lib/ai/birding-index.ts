@@ -1,113 +1,283 @@
 ﻿import "server-only";
 
-import OpenAI from "openai";
 import {
   createUnavailableBirdingIndex,
   getBirdingModelName,
-  isBirdingIndexLevel,
   type BirdingIndexAssessment,
+  type BirdingIndexLevel,
   type DistrictWeatherSnapshot,
 } from "@/lib/weather/birding-outlook";
 
-const DASHSCOPE_BASE_URL =
-  "https://dashscope.aliyuncs.com/api/v2/apps/protocols/compatible-mode/v1";
+const WEATHER_SCORE_MAP = new Map<string, number>([
+  ["晴", 100],
+  ["热", 100],
+  ["少云", 98],
+  ["晴间多云", 95],
+  ["多云", 90],
+  ["阴", 75],
+  ["轻雾", 72],
+  ["毛毛雨/细雨", 68],
+  ["毛毛雨", 68],
+  ["细雨", 68],
+  ["阵雨", 70],
+  ["小雨", 65],
+  ["小雨-中雨", 62],
+  ["中雨", 55],
+  ["中雨-大雨", 50],
+  ["霾", 55],
+  ["中度霾", 48],
+  ["雾", 52],
+  ["浓雾", 48],
+  ["大雾", 45],
+  ["大雨", 30],
+  ["雷阵雨", 25],
+  ["雨", 20],
+  ["强阵雨", 20],
+  ["强雷阵雨", 15],
+  ["重度霾", 10],
+  ["强浓雾", 10],
+  ["暴雨", 0],
+  ["大暴雨", 0],
+  ["特大暴雨", 0],
+  ["大雨-暴雨", 0],
+  ["暴雨-大暴雨", 0],
+  ["大暴雨-特大暴雨", 0],
+  ["极端降雨", 0],
+  ["严重霾", 0],
+  ["特强浓雾", 0],
+]);
 
-const BIRDING_INDEX_SYSTEM_PROMPT = [
-  "\u4f60\u662f\u7528\u4e8e\u7f51\u9875\u76f4\u63a5\u6e32\u67d3\u7684\u89c2\u9e1f\u6307\u6570\u5224\u65ad\u670d\u52a1\u3002",
-  "\u4f60\u53ea\u80fd\u8f93\u51fa JSON\uff0c\u4e0d\u5f97\u8f93\u51fa\u89e3\u91ca\u3001markdown\u3001\u4ee3\u7801\u5757\u3001\u5907\u6ce8\u6216\u989d\u5916\u5b57\u6bb5\u3002",
-  '\u4f60\u53ea\u80fd\u8fd4\u56de {"birdingIndex":"\\u9002\\u5b9c"}\u3001{"birdingIndex":"\\u8f83\\u9002\\u5b9c"} \u6216 {"birdingIndex":"\\u4e0d\\u9002\\u5b9c"} \u4e4b\u4e00\u3002',
-  "\u5224\u65ad\u89c4\u5219\uff1a",
-  "1. \u82e5\u51fa\u73b0\u66b4\u96e8\u3001\u5927\u96e8\u3001\u96f7\u66b4\u3001\u5f3a\u5bf9\u6d41\u3001\u53f0\u98ce\u3001\u5927\u98ce\u3001\u6c99\u5c18\u3001\u91cd\u5ea6\u973e\u3001\u6781\u7aef\u9ad8\u6e29\u6216\u6781\u7aef\u4f4e\u6e29\u7b49\u660e\u663e\u4e0d\u5229\u6761\u4ef6\uff0c\u8f93\u51fa\u4e0d\u9002\u5b9c\u3002",
-  "2. \u82e5\u5929\u6c14\u5e73\u7a33\u3001\u98ce\u529b\u8f83\u5c0f\u3001\u4f53\u611f\u8212\u9002\u3001\u9002\u5408\u6237\u5916\u89c2\u5bdf\uff0c\u8f93\u51fa\u9002\u5b9c\u3002",
-  "3. \u82e5\u5b58\u5728\u5c0f\u96e8\u3001\u95f7\u70ed\u3001\u6e7f\u5ea6\u504f\u9ad8\u3001\u98ce\u529b\u504f\u5927\u6216\u5176\u4ed6\u8f7b\u5ea6\u4e0d\u5229\u56e0\u7d20\uff0c\u4f46\u4ecd\u53ef\u8fdb\u884c\u89c2\u9e1f\uff0c\u8f93\u51fa\u8f83\u9002\u5b9c\u3002",
-  "4. \u5982\u679c\u4fe1\u606f\u4e0d\u5b8c\u6574\uff0c\u6309\u4fdd\u5b88\u539f\u5219\u5728\u8f83\u9002\u5b9c\u548c\u4e0d\u9002\u5b9c\u4e2d\u5224\u65ad\uff0c\u4f46\u7edd\u4e0d\u80fd\u8f93\u51fa\u5176\u4ed6\u503c\u3002",
-  "5. \u8bf7\u4e25\u683c\u6309\u7167 JSON \u683c\u5f0f\u8f93\u51fa\u3002",
-].join("\n");
-
-type BirdingIndexModelOutput = {
-  birdingIndex?: unknown;
-};
-
-type OpenAIResponseOutput = {
-  output_text?: unknown;
-};
-
-function createOpenAIClient() {
-  const apiKey = process.env.DASHSCOPE_API_KEY?.trim();
-  if (!apiKey) {
-    throw new Error(
-      "\u7f3a\u5c11\u89c2\u9e1f\u6307\u6570\u670d\u52a1\u914d\u7f6e\u3002",
-    );
-  }
-
-  return new OpenAI({
-    apiKey,
-    baseURL: DASHSCOPE_BASE_URL,
-  });
+function normalizeWeatherText(value: string) {
+  return value.replace(/\s+/g, "").trim();
 }
 
-function buildBirdingIndexInput(snapshot: DistrictWeatherSnapshot) {
-  return JSON.stringify(
-    {
-      districtName: snapshot.districtName,
-      districtCode: snapshot.districtCode,
-      weatherText: snapshot.weatherText,
-      temperature: snapshot.temperature,
-      humidity: snapshot.humidity,
-      windDirection: snapshot.windDirection,
-      windPower: snapshot.windPower,
-      reportTime: snapshot.reportTime,
-      weatherDetails: snapshot.details,
-    },
-    null,
-    2,
+function readFirstNumber(value: string) {
+  const match = value.match(/-?\d+(?:\.\d+)?/);
+  if (!match) {
+    return null;
+  }
+
+  const parsed = Number(match[0]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function scoreWeatherText(weatherText: string) {
+  const weatherKey = normalizeWeatherText(weatherText);
+  if (!weatherKey) {
+    return null;
+  }
+
+  const score = WEATHER_SCORE_MAP.get(weatherKey);
+  if (typeof score !== "number") {
+    return null;
+  }
+
+  return {
+    weatherKey,
+    score,
+  };
+}
+
+function parseWindLevel(windPower: string) {
+  const normalizedWindPower = windPower.replace(/\s+/g, "").trim();
+  if (!normalizedWindPower) {
+    return null;
+  }
+
+  if (/^(?:≤|<=|＜|<)3(?:级)?$/.test(normalizedWindPower)) {
+    return 3;
+  }
+
+  const matches = normalizedWindPower.match(/\d+/g);
+  if (!matches || matches.length === 0) {
+    return null;
+  }
+
+  const levels = matches
+    .map((value) => Number.parseInt(value, 10))
+    .filter((value) => Number.isFinite(value));
+  if (levels.length === 0) {
+    return null;
+  }
+
+  const hasRange = /[-~～至到]/.test(normalizedWindPower);
+  return hasRange ? Math.max(...levels) : levels[0];
+}
+
+function scoreWindLevel(level: number) {
+  if (level <= 3) {
+    return 100;
+  }
+
+  if (level === 4) {
+    return 75;
+  }
+
+  if (level === 5) {
+    return 70;
+  }
+
+  if (level === 6) {
+    return 55;
+  }
+
+  if (level === 7) {
+    return 45;
+  }
+
+  if (level === 8) {
+    return 30;
+  }
+
+  if (level === 9) {
+    return 20;
+  }
+
+  if (level === 10) {
+    return 10;
+  }
+
+  return 0;
+}
+
+function scoreTemperature(temperature: number) {
+  if (temperature >= 20 && temperature <= 25) {
+    return 100;
+  }
+
+  if (
+    (temperature >= 15 && temperature < 20) ||
+    (temperature > 25 && temperature <= 30)
+  ) {
+    return 75;
+  }
+
+  if (
+    (temperature >= 10 && temperature < 15) ||
+    (temperature > 30 && temperature <= 35)
+  ) {
+    return 50;
+  }
+
+  return 20;
+}
+
+function scoreHumidity(humidity: number) {
+  if (humidity >= 40 && humidity <= 60) {
+    return 100;
+  }
+
+  if ((humidity >= 30 && humidity < 40) || (humidity > 60 && humidity <= 70)) {
+    return 75;
+  }
+
+  if (humidity < 30 || (humidity > 70 && humidity <= 80)) {
+    return 50;
+  }
+
+  return 20;
+}
+
+function resolveBirdingLevel(totalScore: number): BirdingIndexLevel {
+  if (totalScore >= 80) {
+    return "适宜";
+  }
+
+  if (totalScore >= 60) {
+    return "较适宜";
+  }
+
+  return "不适宜";
+}
+
+function buildFailureReason(snapshot: DistrictWeatherSnapshot) {
+  const weatherResult = scoreWeatherText(snapshot.weatherText);
+  if (!weatherResult) {
+    return `当前天气现象“${snapshot.weatherText}”暂不支持本地观鸟指数换算。`;
+  }
+
+  if (parseWindLevel(snapshot.windPower) === null) {
+    return `无法解析当前风力信息：${snapshot.windPower}。`;
+  }
+
+  if (readFirstNumber(snapshot.temperature) === null) {
+    return `无法解析当前温度信息：${snapshot.temperature}。`;
+  }
+
+  if (readFirstNumber(snapshot.humidity) === null) {
+    return `无法解析当前湿度信息：${snapshot.humidity}。`;
+  }
+
+  return "观鸟指数暂时不可用。";
+}
+
+function buildWeightedScoreResult(snapshot: DistrictWeatherSnapshot) {
+  const weatherResult = scoreWeatherText(snapshot.weatherText);
+  const windLevel = parseWindLevel(snapshot.windPower);
+  const temperature = readFirstNumber(snapshot.temperature);
+  const humidity = readFirstNumber(snapshot.humidity);
+
+  if (
+    !weatherResult ||
+    windLevel === null ||
+    temperature === null ||
+    humidity === null
+  ) {
+    return null;
+  }
+
+  const weatherScore = weatherResult.score;
+  const windScore = scoreWindLevel(windLevel);
+  const temperatureScore = scoreTemperature(temperature);
+  const humidityScore = scoreHumidity(humidity);
+  const totalScore = Math.round(
+    weatherScore * 0.4 +
+      windScore * 0.2 +
+      temperatureScore * 0.2 +
+      humidityScore * 0.2,
   );
+
+  return {
+    level: resolveBirdingLevel(totalScore),
+    rawResult: {
+      weatherKey: weatherResult.weatherKey,
+      weatherScore,
+      windLevel,
+      windScore,
+      temperature,
+      temperatureScore,
+      humidity,
+      humidityScore,
+      totalScore,
+      weights: {
+        weather: 0.4,
+        wind: 0.2,
+        temperature: 0.2,
+        humidity: 0.2,
+      },
+    } satisfies Record<string, unknown>,
+  };
 }
 
 export async function assessBirdingIndex(
   snapshot: DistrictWeatherSnapshot,
 ): Promise<BirdingIndexAssessment> {
   const modelName = getBirdingModelName();
+  const result = buildWeightedScoreResult(snapshot);
 
-  try {
-    const openai = createOpenAIClient();
-    const response = (await openai.responses.create({
-      model: modelName,
-      instructions: BIRDING_INDEX_SYSTEM_PROMPT,
-      input: buildBirdingIndexInput(snapshot),
-      response_format: { type: "json_object" },
-    } as never)) as OpenAIResponseOutput;
-
-    const outputText =
-      typeof response.output_text === "string" ? response.output_text.trim() : "";
-
-    if (!outputText) {
-      return createUnavailableBirdingIndex(
-        modelName,
-        "\u89c2\u9e1f\u6307\u6570\u8fd4\u56de\u5185\u5bb9\u4e3a\u7a7a\u3002",
-      );
-    }
-
-    const parsed = JSON.parse(outputText) as BirdingIndexModelOutput;
-    if (!isBirdingIndexLevel(parsed.birdingIndex)) {
-      return createUnavailableBirdingIndex(
-        modelName,
-        "\u89c2\u9e1f\u6307\u6570\u8fd4\u56de\u4e86\u4e0d\u652f\u6301\u7684\u7b49\u7ea7\u503c\u3002",
-      );
-    }
-
-    return {
-      level: parsed.birdingIndex,
-      status: "success",
-      generatedAt: new Date().toISOString(),
-      modelName,
-      rawResult: parsed as Record<string, unknown>,
-      failureReason: null,
-    };
-  } catch {
+  if (!result) {
     return createUnavailableBirdingIndex(
       modelName,
-      "\u89c2\u9e1f\u6307\u6570\u670d\u52a1\u6682\u65f6\u4e0d\u53ef\u7528\u3002",
+      buildFailureReason(snapshot),
     );
   }
+
+  return {
+    level: result.level,
+    status: "success",
+    generatedAt: new Date().toISOString(),
+    modelName,
+    rawResult: result.rawResult,
+    failureReason: null,
+  };
 }

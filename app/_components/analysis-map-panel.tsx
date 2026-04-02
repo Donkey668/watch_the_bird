@@ -242,7 +242,7 @@ export function AnalysisMapPanel({
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
         <div className="relative overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-muted)]">
-          <div className="absolute right-2 top-2 z-20 w-[12rem]">
+          <div className="absolute right-2 top-2 z-20 w-[8rem]">
             <Select
               aria-label="\u9009\u62e9\u9884\u8bbe\u516c\u56ed"
               options={selectOptions}

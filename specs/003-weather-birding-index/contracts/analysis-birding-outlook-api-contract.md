@@ -20,7 +20,8 @@
 - `parkId` must match one configured preset park.
 - The frontend must call this endpoint whenever the default park loads or the
   user selects a different park.
-- The frontend must not call AMap Weather API or the LLM endpoint directly.
+- The frontend must not call AMap Weather API directly.
+- The Route Handler must compute birding index locally and must not call an LLM.
 
 ## Success Response Contract
 
@@ -29,43 +30,65 @@
 ```json
 {
   "requestStatus": "success",
-  "message": "\u5929\u6c14\u4fe1\u606f\u548c\u89c2\u9e1f\u6307\u6570\u5df2\u66f4\u65b0\u3002",
-  "requestedAt": "2026-03-31T10:00:00.000Z",
+  "message": "天气信息和观鸟指数已更新。",
+  "requestedAt": "2026-04-02T02:00:00.000Z",
   "park": {
     "parkId": "shenzhen-bay-park",
     "parkName": "Shenzhen Bay Park",
     "cityName": "Shenzhen",
-    "districtName": "\u5357\u5c71\u533a",
+    "districtName": "南山区",
     "districtCode": "440305"
   },
   "weather": {
-    "districtName": "\u5357\u5c71\u533a",
+    "districtName": "南山区",
     "districtCode": "440305",
-    "weatherText": "Cloudy",
+    "weatherText": "多云",
     "temperature": "26",
     "humidity": "72",
-    "windDirection": "South",
+    "windDirection": "南",
     "windPower": "3",
-    "reportTime": "2026-03-31 17:00:00",
+    "reportTime": "2026-04-02 10:00:00",
     "rawStatus": "success",
     "details": [
       {
-        "key": "district",
-        "label": "\u6240\u5728\u533a\u53bf",
-        "value": "\u5357\u5c71\u533a"
+        "key": "province",
+        "label": "省份",
+        "value": "广东省"
       },
       {
-        "key": "weather",
-        "label": "\u5929\u6c14",
-        "value": "Cloudy"
+        "key": "city",
+        "label": "城市",
+        "value": "深圳市"
+      },
+      {
+        "key": "district",
+        "label": "所在区县",
+        "value": "南山区"
       }
     ]
   },
   "birdingIndex": {
-    "level": "\u8f83\u9002\u5b9c",
+    "level": "较适宜",
     "status": "success",
-    "generatedAt": "2026-03-31T10:00:01.200Z",
-    "modelName": "qwen3.5-plus"
+    "generatedAt": "2026-04-02T02:00:00.050Z",
+    "modelName": "local-weather-score-v1",
+    "rawResult": {
+      "weatherKey": "多云",
+      "weatherScore": 90,
+      "windLevel": 3,
+      "windScore": 100,
+      "temperature": 26,
+      "temperatureScore": 75,
+      "humidity": 72,
+      "humidityScore": 50,
+      "totalScore": 81,
+      "weights": {
+        "weather": 0.4,
+        "wind": 0.2,
+        "temperature": 0.2,
+        "humidity": 0.2
+      }
+    }
   }
 }
 ```
@@ -75,44 +98,34 @@
 ```json
 {
   "requestStatus": "partial",
-  "message": "\u5929\u6c14\u4fe1\u606f\u5df2\u66f4\u65b0\uff0c\u4f46\u89c2\u9e1f\u6307\u6570\u6682\u65f6\u4e0d\u53ef\u7528\u3002",
-  "requestedAt": "2026-03-31T10:00:00.000Z",
+  "message": "天气信息已更新，但观鸟指数暂时不可用。",
+  "requestedAt": "2026-04-02T02:00:00.000Z",
   "park": {
     "parkId": "shenzhen-bay-park",
     "parkName": "Shenzhen Bay Park",
     "cityName": "Shenzhen",
-    "districtName": "\u5357\u5c71\u533a",
+    "districtName": "南山区",
     "districtCode": "440305"
   },
   "weather": {
-    "districtName": "\u5357\u5c71\u533a",
+    "districtName": "南山区",
     "districtCode": "440305",
-    "weatherText": "Cloudy",
+    "weatherText": "未知天气",
     "temperature": "26",
     "humidity": "72",
-    "windDirection": "South",
+    "windDirection": "南",
     "windPower": "3",
-    "reportTime": "2026-03-31 17:00:00",
+    "reportTime": "2026-04-02 10:00:00",
     "rawStatus": "success",
-    "details": [
-      {
-        "key": "district",
-        "label": "\u6240\u5728\u533a\u53bf",
-        "value": "\u5357\u5c71\u533a"
-      },
-      {
-        "key": "weather",
-        "label": "\u5929\u6c14",
-        "value": "Cloudy"
-      }
-    ]
+    "details": []
   },
   "birdingIndex": {
     "level": null,
     "status": "unavailable",
     "generatedAt": null,
-    "modelName": "qwen3.5-plus",
-    "failureReason": "\u89c2\u9e1f\u6307\u6570\u670d\u52a1\u6682\u65f6\u4e0d\u53ef\u7528\u3002"
+    "modelName": "local-weather-score-v1",
+    "rawResult": null,
+    "failureReason": "当前天气现象“未知天气”暂不支持本地观鸟指数换算。"
   }
 }
 ```
@@ -124,8 +137,8 @@
 ```json
 {
   "requestStatus": "invalid_park",
-  "message": "\u672a\u627e\u5230\u5bf9\u5e94\u7684\u516c\u56ed\u53c2\u6570\u3002",
-  "requestedAt": "2026-03-31T10:00:00.000Z"
+  "message": "未找到对应的公园参数。",
+  "requestedAt": "2026-04-02T02:00:00.000Z"
 }
 ```
 
@@ -134,13 +147,13 @@
 ```json
 {
   "requestStatus": "failed",
-  "message": "\u5929\u6c14\u4fe1\u606f\u6682\u65f6\u4e0d\u53ef\u7528\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002",
-  "requestedAt": "2026-03-31T10:00:00.000Z",
+  "message": "天气信息暂时不可用，请稍后重试。",
+  "requestedAt": "2026-04-02T02:00:00.000Z",
   "park": {
     "parkId": "shenzhen-bay-park",
     "parkName": "Shenzhen Bay Park",
     "cityName": "Shenzhen",
-    "districtName": "\u5357\u5c71\u533a",
+    "districtName": "南山区",
     "districtCode": "440305"
   }
 }
@@ -148,12 +161,9 @@
 
 ## Upstream Integration Rules
 
-- The Route Handler must compose the AMap weather URL with the required `key`
-  query parameter on every request.
+- The Route Handler must compose the AMap weather URL with the required `key` query parameter on every request.
 - The Route Handler must request and parse JSON from the weather service.
-- The weather payload returned to the frontend must include normalized summary
-  fields plus a `details` array for direct rendering.
-- The LLM call must use `response_format: { type: "json_object" }` and reject
-  any non-enum birding index value.
-- The frontend must treat `requestStatus = partial` as renderable weather data
-  with unavailable birding index, not as a fatal panel error.
+- The weather payload returned to the frontend must include normalized summary fields plus a `details` array for direct rendering.
+- Birding index scoring must be local and deterministic.
+- A successful score must follow the fixed weighted formula and final-score bands documented in `spec.md`.
+- The frontend must treat `requestStatus = partial` as renderable weather data with unavailable birding index, not as a fatal panel error.

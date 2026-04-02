@@ -1,158 +1,123 @@
-# Data Model: Analysis Weather and Birding Index
+﻿# Data Model: Analysis Weather and Birding Index
 
 ## Overview
 
 This feature introduces no persistent database schema. The data model is an
-integration-state model that aggregates park context, district weather, and an
-AI-generated birding index for rendering on the analysis screen.
+integration-state model that aggregates preset park context, district weather,
+and a locally computed birding index for rendering on the analysis screen.
 
 ## Entities
 
 ### ParkWeatherContext
 
 **Purpose**: Represents the selected preset park and the district metadata
-required for weather lookup.
-
-**Fields**:
+required for AMap weather lookup.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `parkId` | enum | Stable preset park identifier from the map selector |
-| `parkName` | string | Display name shown in map and outlook panel |
-| `cityName` | string | City label for display context |
-| `districtName` | string | District or county-level label used in the panel |
-| `districtCode` | string | AMap-compatible district query value |
-| `isDefault` | boolean | Whether this park is the default selection |
-
-**Validation rules**:
-
-- `parkId` must match one configured preset park.
-- `districtCode` must be present for every supported park.
-- `districtName` and `districtCode` must describe the same district.
-
-**Relationships**:
-
-- One `ParkWeatherContext` maps to zero or one `DistrictWeatherSnapshot`.
-- One `ParkWeatherContext` maps to zero or one `BirdingIndexAssessment`.
+| `parkId` | enum | Stable preset park identifier |
+| `parkName` | string | Display name used by the UI |
+| `cityName` | string | City label for the park |
+| `districtName` | string | District or county label used in weather context |
+| `districtCode` | string | AMap-compatible weather query value |
+| `isDefault` | boolean | Whether the park is the default selection |
 
 ### DistrictWeatherSnapshot
 
 **Purpose**: Represents the normalized weather payload returned for the
 selected district.
 
-**Fields**:
-
 | Field | Type | Description |
 |-------|------|-------------|
-| `districtName` | string | Resolved district or county-level name |
-| `districtCode` | string | Upstream query value used for the weather request |
-| `weatherText` | string | Human-readable weather summary from the upstream service |
-| `temperature` | string | Current or returned temperature value |
+| `districtName` | string | Resolved district name |
+| `districtCode` | string | Upstream query code |
+| `weatherText` | string | Human-readable weather phenomenon |
+| `temperature` | string | Returned temperature value |
 | `humidity` | string | Returned humidity value |
 | `windDirection` | string | Returned wind direction |
 | `windPower` | string | Returned wind power or level |
-| `reportTime` | string | Upstream weather update time |
+| `reportTime` | string | Upstream report time |
 | `rawStatus` | enum | `success` or `unavailable` |
-| `rawPayload` | object | Parsed upstream payload retained for normalization/debug use |
-
-**Validation rules**:
-
-- `districtCode` must match the queried `ParkWeatherContext`.
-- `weatherText` must be present when `rawStatus = success`.
-- `reportTime` must be present when the weather payload is considered usable.
-
-**Relationships**:
-
-- One `DistrictWeatherSnapshot` is produced from one `ParkWeatherContext`.
-- One `DistrictWeatherSnapshot` is the only weather input to one
-  `BirdingIndexAssessment`.
+| `rawPayload` | object | Parsed upstream payload retained for normalization |
+| `details` | array | Render-ready weather rows for the UI |
 
 ### BirdingIndexAssessment
 
-**Purpose**: Represents the AI-generated suitability judgment for same-day
-birding conditions.
-
-**Fields**:
+**Purpose**: Represents the locally computed birding suitability result for the
+current weather snapshot.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `level` | enum | One of `适宜`, `较适宜`, `不适宜` |
+| `level` | enum/null | `适宜` / `较适宜` / `不适宜` when scoring succeeds |
 | `status` | enum | `success` or `unavailable` |
-| `generatedAt` | string | Time the assessment was created |
-| `modelName` | string | LLM model identifier used for generation |
-| `rawResult` | object | Parsed JSON object returned by the model |
-| `failureReason` | string/null | Reason the assessment is unavailable |
+| `generatedAt` | string/null | Time the local scoring result was generated |
+| `modelName` | string | Fixed local engine identifier, currently `local-weather-score-v1` |
+| `rawResult` | object/null | Local score breakdown and weighted total |
+| `failureReason` | string/null | Why the local scorer could not produce a result |
 
-**Validation rules**:
+**Derived scoring fields inside `rawResult`**:
 
-- `level` must never contain values outside the three supported labels.
-- `rawResult` must include the same enum-bearing value when `status = success`.
-- `failureReason` must be populated when `status = unavailable`.
-
-**Relationships**:
-
-- One `BirdingIndexAssessment` is derived from one `DistrictWeatherSnapshot`.
-- One `BirdingIndexAssessment` is attached to one `BirdingOutlookResponse`.
+| Field | Type | Description |
+|-------|------|-------------|
+| `weatherKey` | string | Normalized weather text used for mapping |
+| `weatherScore` | number | Fixed weather phenomenon score |
+| `windLevel` | number | Parsed wind level used for scoring |
+| `windScore` | number | Wind score |
+| `temperature` | number | Parsed temperature |
+| `temperatureScore` | number | Temperature score |
+| `humidity` | number | Parsed humidity |
+| `humidityScore` | number | Humidity score |
+| `totalScore` | number | Final rounded weighted score |
+| `weights` | object | Fixed weight table used for the calculation |
 
 ### BirdingOutlookResponse
 
 **Purpose**: Represents the normalized API response sent to the frontend panel.
 
-**Fields**:
-
 | Field | Type | Description |
 |-------|------|-------------|
+| `requestStatus` | enum | `success`, `partial`, `invalid_park`, or `failed` |
+| `message` | string | User-facing summary of the current state |
+| `requestedAt` | string | Time the endpoint handled the request |
 | `park` | object | Serialized `ParkWeatherContext` |
 | `weather` | object/null | Serialized `DistrictWeatherSnapshot` |
 | `birdingIndex` | object/null | Serialized `BirdingIndexAssessment` |
-| `requestStatus` | enum | `success`, `partial`, `invalid_park`, or `failed` |
-| `message` | string | User-facing summary for current state |
-| `requestedAt` | string | Time the endpoint processed the request |
-
-**Validation rules**:
-
-- `requestStatus = success` requires both `weather` and `birdingIndex`.
-- `requestStatus = partial` requires valid `weather` and unavailable
-  `birdingIndex`.
-- `requestStatus = invalid_park` must not include weather or birding data.
-
-**Relationships**:
-
-- One `BirdingOutlookResponse` wraps at most one weather snapshot and one
-  birding index assessment for the selected park.
+| `analysisOverview` | object/null | Derived overview block below weather |
 
 ## Derived State Rules
 
-- The frontend panel state must always correspond to the currently selected
-  `parkId`.
-- A later park selection invalidates all earlier in-flight responses for UI
-  rendering.
-- Weather availability and birding-index availability are separate states and
-  must not be collapsed into a single boolean.
+- The frontend panel state must always correspond to the latest selected `parkId`.
+- Weather availability and birding-index availability are separate states.
+- A supported local score requires four valid dimensions: weather text, wind,
+  temperature, and humidity.
+- Final level mapping uses rounded score bands:
+  - `80-100 => 适宜`
+  - `60-79 => 较适宜`
+  - `0-59 => 不适宜`
 
 ## State Transitions
 
 ### Initial Load
 
 1. Resolve the default `ParkWeatherContext`.
-2. Request the server endpoint with the default `parkId`.
-3. Render loading state below the map.
-4. Transition to `success`, `partial`, or `failed` once the response returns.
+2. Query district weather on the server.
+3. Compute the local birding index if all required fields are usable.
+4. Return `success`, `partial`, or `failed`.
 
 ### Park Switch
 
-1. User selects another park in the map panel.
-2. The outlook panel marks previous response as stale and enters loading state.
-3. A new server request runs for the selected district.
-4. Only the most recent response is committed to the UI.
+1. User selects another preset park.
+2. The previous panel result becomes stale.
+3. A fresh server request runs for the new district.
+4. Only the newest response is committed to the UI.
 
 ### Partial Failure
 
 1. Weather query succeeds.
-2. AI classification fails or returns invalid JSON/enum.
-3. The panel renders normalized weather data and a birding-index-unavailable state.
+2. Local scoring cannot map the current weather phenomenon or parse a required value.
+3. The panel still shows weather, while birding index becomes unavailable.
 
 ### Full Failure
 
-1. Park lookup fails or the weather request cannot produce usable data.
-2. The panel renders a clear error state and omits the birding index result.
+1. Park lookup fails or the weather request cannot produce a usable snapshot.
+2. The panel shows a clear failure state and omits birding index output.

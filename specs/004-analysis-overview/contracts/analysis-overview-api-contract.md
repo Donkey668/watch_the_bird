@@ -65,10 +65,10 @@
     "level": "适宜",
     "status": "success",
     "generatedAt": "2026-04-01T01:30:01.120Z",
-    "modelName": "qwen3.5-plus"
+    "modelName": "local-weather-score-v1"
   },
   "analysisOverview": {
-    "title": "分析总览",
+    "title": "栖息地环境指标",
     "beijingTime": {
       "displayText": "2026年4月1日 09:30",
       "isoTimestamp": "2026-04-01T09:30:00+08:00"
@@ -120,11 +120,11 @@
     "level": null,
     "status": "unavailable",
     "generatedAt": null,
-    "modelName": "qwen3.5-plus",
+    "modelName": "local-weather-score-v1",
     "failureReason": "观鸟指数服务暂时不可用。"
   },
   "analysisOverview": {
-    "title": "分析总览",
+    "title": "栖息地环境指标",
     "beijingTime": {
       "displayText": "2026年4月1日 09:30",
       "isoTimestamp": "2026-04-01T09:30:00+08:00"
@@ -181,7 +181,7 @@
 
 ## Contract Rules
 
-- `analysisOverview.title` must always be `分析总览`.
+- `analysisOverview.title` must always be `栖息地环境指标`.
 - `analysisOverview.beijingTime.displayText` must always be in the format
   `YYYY年M月D日 HH:mm`.
 - The contract must not include a separate current time-slot label intended for

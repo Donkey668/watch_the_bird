@@ -45,7 +45,6 @@ const mapKey = process.env.NEXT_PUBLIC_AMAP_KEY?.trim();
 const securityCode = process.env.NEXT_PUBLIC_AMAP_SECURITY_JS_CODE?.trim();
 const serviceHost = process.env.NEXT_PUBLIC_AMAP_SERVICE_HOST?.trim();
 const weatherKey = process.env.AMAP_WEATHER_KEY?.trim();
-const dashscopeApiKey = process.env.DASHSCOPE_API_KEY?.trim();
 
 const missing = [];
 
@@ -63,10 +62,6 @@ if (!weatherKey) {
   missing.push("AMAP_WEATHER_KEY");
 }
 
-if (!dashscopeApiKey) {
-  missing.push("DASHSCOPE_API_KEY");
-}
-
 if (missing.length > 0) {
   console.error(
     `\u7f3a\u5c11\u5fc5\u8981\u73af\u5883\u53d8\u91cf\uff1a${missing.join("\u3001")}`,
@@ -75,5 +70,5 @@ if (missing.length > 0) {
 }
 
 console.log(
-  "\u5730\u56fe\u3001\u5929\u6c14\u548c\u89c2\u9e1f\u6307\u6570\u670d\u52a1\u7684\u73af\u5883\u53d8\u91cf\u5747\u5df2\u914d\u7f6e\u3002",
+  "\u5730\u56fe\u4e0e\u5929\u6c14\u670d\u52a1\u6240\u9700\u7684\u73af\u5883\u53d8\u91cf\u5747\u5df2\u914d\u7f6e\u3002",
 );

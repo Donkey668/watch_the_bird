@@ -99,8 +99,10 @@ export type BirdingOutlookResponse = {
   analysisOverview?: AnalysisOverviewSnapshot | null;
 };
 
+const LOCAL_BIRDING_INDEX_MODEL_NAME = "local-weather-score-v1";
+
 export function getBirdingModelName() {
-  return process.env.BIRDING_INDEX_MODEL?.trim() || "qwen3.5-plus";
+  return LOCAL_BIRDING_INDEX_MODEL_NAME;
 }
 
 export function isBirdingIndexLevel(

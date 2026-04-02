@@ -30,10 +30,10 @@ implementation and testing of each story.
 **Purpose**: Prepare dependencies, environment placeholders, and park metadata
 needed by the weather and birding-outlook feature.
 
-- [X] T001 Add the `openai` dependency in `package.json`
-- [X] T002 Add `AMAP_WEATHER_KEY`, `DASHSCOPE_API_KEY`, and `BIRDING_INDEX_MODEL` placeholders in `.env.example`
+- [X] T001 Remove the obsolete `openai` dependency from `package.json`
+- [X] T002 Add the required `AMAP_WEATHER_KEY` placeholder in `.env.example`
 - [X] T003 [P] Extend preset park metadata with district lookup fields in `lib/maps/park-options.ts`
-- [X] T004 [P] Extend environment verification to require weather and DashScope server vars in `scripts/verify-amap-env.mjs`
+- [X] T004 [P] Extend environment verification to require weather server vars only in `scripts/verify-amap-env.mjs`
 
 ---
 
@@ -46,7 +46,7 @@ story.
 
 - [X] T005 [P] Define birding-index enums, response types, and normalization helpers in `lib/weather/birding-outlook.ts`
 - [X] T006 [P] Implement AMap weather URL composition and JSON parsing helpers in `lib/weather/amap-weather.ts`
-- [X] T007 [P] Implement the DashScope-compatible OpenAI client, system prompt, and enum validation in `lib/ai/birding-index.ts`
+- [X] T007 [P] Implement the local weighted birding-index scoring tables, parsing helpers, and failure handling in `lib/ai/birding-index.ts`
 - [X] T008 Create `GET /api/analysis/birding-outlook` query validation and shared response shaping in `app/api/analysis/birding-outlook/route.ts`
 - [X] T009 [P] Create the weather and birding outlook panel shell with loading and error containers in `app/_components/analysis-birding-outlook.tsx`
 - [X] T010 Wire the new panel below the map with width-safe spacing in `app/_components/analysis-screen.tsx` and `app/globals.css`
@@ -65,7 +65,7 @@ for the default park directly below the map.
 default park automatically loads a panel that shows district weather details
 and exactly one birding index value from `适宜`, `较适宜`, or `不适宜`.
 
-- [X] T011 [P] [US1] Implement the full-success route flow that resolves the default park context, fetches district weather, and generates a birding index in `app/api/analysis/birding-outlook/route.ts`
+- [X] T011 [P] [US1] Implement the full-success route flow that resolves the default park context, fetches district weather, and computes a birding index in `app/api/analysis/birding-outlook/route.ts`
 - [X] T012 [US1] Fetch the default park outlook on mount and manage loading-to-success transitions in `app/_components/analysis-birding-outlook.tsx`
 - [X] T013 [US1] Render the district header, highlighted birding index, and all normalized weather fields in `app/_components/analysis-birding-outlook.tsx`
 - [X] T014 [US1] Replace the placeholder analysis content ordering so the outlook panel is the first data card under the map in `app/_components/analysis-screen.tsx`
@@ -97,14 +97,14 @@ the panel deterministically and keeps the map screen in place.
 ## Phase 5: User Story 3 - Stay Clear Under Errors And Rapid Switching (Priority: P3)
 
 **Goal**: Preserve understandable, latest-selection-only results when weather
-or AI steps fail or when users switch parks quickly.
+or local scoring steps fail or when users switch parks quickly.
 
-**Independent Test**: Rapidly switch parks and simulate weather failure plus AI
-failure; verify the panel shows only the latest selection's result or a clear
-degraded state without stale birding-index text.
+**Independent Test**: Rapidly switch parks and simulate weather failure plus
+local-scoring failure; verify the panel shows only the latest selection's
+result or a clear degraded state without stale birding-index text.
 
 - [X] T019 [P] [US3] Reject invalid weather upstream results and return the `failed` API state in `lib/weather/amap-weather.ts` and `app/api/analysis/birding-outlook/route.ts`
-- [X] T020 [P] [US3] Reject invalid or unavailable LLM classifications and return the `partial` API state in `lib/ai/birding-index.ts` and `app/api/analysis/birding-outlook/route.ts`
+- [X] T020 [P] [US3] Reject unsupported or unavailable local scoring inputs and return the `partial` API state in `lib/ai/birding-index.ts` and `app/api/analysis/birding-outlook/route.ts`
 - [X] T021 [P] [US3] Add final-selection-wins request sequencing for rapid park changes in `app/_components/analysis-birding-outlook.tsx`
 - [X] T022 [US3] Render partial-success, failure, and retry-only panel states without stale birding results in `app/_components/analysis-birding-outlook.tsx`
 - [X] T023 [US3] Preserve panel width safety and keep map interaction unobstructed under degraded states in `app/_components/analysis-screen.tsx` and `app/globals.css`
@@ -119,7 +119,7 @@ and the last park selection always wins on screen.
 **Purpose**: Finalize documentation, cleanup, and manual validation across the
 feature.
 
-- [X] T024 [P] Align environment setup and validation steps with weather and LLM requirements in `specs/003-weather-birding-index/quickstart.md`
+- [X] T024 [P] Align environment setup and validation steps with weather and local-scoring requirements in `specs/003-weather-birding-index/quickstart.md`
 - [X] T025 [P] Align final API and UI examples with implemented loading, partial, and failure copy in `specs/003-weather-birding-index/contracts/analysis-birding-outlook-api-contract.md` and `specs/003-weather-birding-index/contracts/analysis-birding-outlook-ui-contract.md`
 - [X] T026 Run lint-oriented cleanup for `app/api/analysis/birding-outlook/route.ts`, `app/_components/analysis-birding-outlook.tsx`, `app/_components/analysis-screen.tsx`, `app/_components/analysis-map-panel.tsx`, `lib/weather/amap-weather.ts`, `lib/weather/birding-outlook.ts`, `lib/ai/birding-index.ts`, `lib/maps/park-options.ts`, and `scripts/verify-amap-env.mjs`
 - [ ] T027 Run the manual validation flow and record implementation notes in `specs/003-weather-birding-index/quickstart.md`
@@ -164,7 +164,7 @@ feature.
 ## Parallel Example: User Story 1
 
 ```bash
-Task: "Implement the full-success route flow that resolves the default park context, fetches district weather, and generates a birding index in app/api/analysis/birding-outlook/route.ts"
+Task: "Implement the full-success route flow that resolves the default park context, fetches district weather, and computes a birding index in app/api/analysis/birding-outlook/route.ts"
 Task: "Fetch the default park outlook on mount and manage loading-to-success transitions in app/_components/analysis-birding-outlook.tsx"
 ```
 
@@ -179,7 +179,7 @@ Task: "Keep park and district labels synchronized across switched responses in a
 
 ```bash
 Task: "Reject invalid weather upstream results and return the failed API state in lib/weather/amap-weather.ts and app/api/analysis/birding-outlook/route.ts"
-Task: "Reject invalid or unavailable LLM classifications and return the partial API state in lib/ai/birding-index.ts and app/api/analysis/birding-outlook/route.ts"
+Task: "Reject unsupported or unavailable local scoring inputs and return the partial API state in lib/ai/birding-index.ts and app/api/analysis/birding-outlook/route.ts"
 Task: "Add final-selection-wins request sequencing for rapid park changes in app/_components/analysis-birding-outlook.tsx"
 ```
 
