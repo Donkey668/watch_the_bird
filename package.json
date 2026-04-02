@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "amap:verify-env": "node scripts/verify-amap-env.mjs",
+    "identify:verify-env": "node scripts/verify-identify-env.mjs",
     "ui:init": "npx shadcn@latest init -d",
     "ui:add": "npx shadcn@latest add"
   },
@@ -17,6 +18,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "next": "16.2.1",
+    "openai": "^6.33.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "tailwind-merge": "^3.3.1"

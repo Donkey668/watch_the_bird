@@ -1,64 +1,127 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-
-const STARTER_STEPS = [
-  "通过竖屏友好的流程拍摄或上传清晰的鸟类照片。",
-  "在保存结果前查看 AI 建议与置信度提示。",
-  "将确认后的识别结果写入观测记录。",
-];
+  createIdentifyFailedResponse,
+  type BirdIdentifyResponse,
+} from "@/lib/identify/identify-contract";
+import { IdentifyEncyclopediaCard } from "./identify-encyclopedia-card";
+import { IdentifyResultCard } from "./identify-result-card";
+import { IdentifyUploadCard } from "./identify-upload-card";
 
 export function IdentifyScreen() {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewFileName, setPreviewFileName] = useState<string | null>(null);
+  const [response, setResponse] = useState<BirdIdentifyResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const requestVersionRef = useRef(0);
+  const previewUrlRef = useRef<string | null>(null);
+
+  const replacePreviewUrl = useCallback((nextPreviewUrl: string | null) => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+
+    previewUrlRef.current = nextPreviewUrl;
+    setPreviewUrl(nextPreviewUrl);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      requestVersionRef.current += 1;
+
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleSelectFile = useCallback(
+    async (file: File | null) => {
+      if (!file) {
+        return;
+      }
+
+      const nextPreviewUrl = URL.createObjectURL(file);
+      replacePreviewUrl(nextPreviewUrl);
+      setPreviewFileName(file.name);
+      setResponse(null);
+
+      const requestVersion = ++requestVersionRef.current;
+      setIsLoading(true);
+
+      try {
+        const formData = new FormData();
+        formData.set("image", file);
+
+        const result = await fetch("/api/identify/bird-recognition", {
+          method: "POST",
+          body: formData,
+          cache: "no-store",
+        });
+
+        const payload = (await result.json()) as BirdIdentifyResponse;
+        if (requestVersion !== requestVersionRef.current) {
+          return;
+        }
+
+        setResponse(payload);
+      } catch {
+        if (requestVersion !== requestVersionRef.current) {
+          return;
+        }
+
+        setResponse(createIdentifyFailedResponse(new Date().toISOString()));
+      } finally {
+        if (requestVersion === requestVersionRef.current) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [replacePreviewUrl],
+  );
+
   return (
     <div className="space-y-4">
       <header className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
-          工具介绍
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+          鸟影识别
         </p>
         <h1 className="text-2xl font-semibold leading-tight text-[var(--text-primary)]">
           鸟类识别工具
         </h1>
         <p className="text-sm leading-6 text-[var(--text-secondary)]">
-          在不离开当前移动页面的情况下识别未知鸟类。
+          上传一张清晰的鸟类照片，识别当前画面中的主要鸟种。
         </p>
       </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>输入前说明</CardTitle>
-          <CardDescription>
-            在用户添加图片前，工具会先展示流程指引，帮助理解后续操作。
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {STARTER_STEPS.map((step, index) => (
-            <div key={`${index}-${step}`} className="space-y-2">
-              <p className="text-sm leading-6 text-[var(--text-secondary)]">
-                {index + 1}. {step}
-              </p>
-              {index < STARTER_STEPS.length - 1 && <Separator />}
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <IdentifyUploadCard
+        previewUrl={previewUrl}
+        previewFileName={previewFileName}
+        isLoading={isLoading}
+        onSelectFile={handleSelectFile}
+      />
 
-      <Card className="border-sky-200 bg-sky-50/60">
-        <CardHeader>
-          <CardTitle className="text-sky-900">当前状态</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm leading-6 text-sky-900/80">
-            当前版本中的识别流程仍为占位演示；在后端能力接入前，这个面板主要用于说明功能用途。
-          </p>
-        </CardContent>
-      </Card>
+      {(previewUrl || response || isLoading) ? (
+        <IdentifyResultCard response={response} isLoading={isLoading} />
+      ) : null}
+
+      {!isLoading && response?.encyclopedia ? (
+        <IdentifyEncyclopediaCard
+          sections={response.encyclopedia.sections}
+          message={
+            response.encyclopedia.status === "unavailable"
+              ? response.encyclopedia.message
+              : null
+          }
+        />
+      ) : null}
+
+      <p className="px-2 text-center text-xs leading-5 text-[var(--text-secondary)]">
+        识别结果仅供参考。鸟类图片越接近标准照，准确率越高。
+      </p>
     </div>
   );
 }
