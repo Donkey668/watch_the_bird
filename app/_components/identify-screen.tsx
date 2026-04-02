@@ -86,7 +86,7 @@ export function IdentifyScreen() {
   return (
     <div className="space-y-4">
       <header className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
           鸟影识别
         </p>
         <h1 className="text-2xl font-semibold leading-tight text-[var(--text-primary)]">

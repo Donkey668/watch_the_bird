@@ -16,7 +16,7 @@ type NameRowProps = {
 function NameRow({ label, value }: NameRowProps) {
   return (
     <div className="flex items-start justify-between gap-4 rounded-xl bg-[var(--surface-muted)] px-4 py-3">
-      <span className="text-sm font-medium text-[var(--text-secondary)]">
+      <span className="text-sm font-semibold text-gray-800">
         {label}
       </span>
       <span className="min-w-0 text-right text-sm leading-6 text-[var(--text-primary)]">
@@ -50,7 +50,7 @@ export function IdentifyResultCard({
           </div>
         ) : recognition?.status === "success" ? (
           <div className="space-y-3">
-            <NameRow label="简体中文名" value={recognition.speciesNameZh} />
+            <NameRow label="中文学名" value={recognition.speciesNameZh} />
             <NameRow label="英文学名" value={recognition.speciesNameEn} />
             <NameRow label="拉丁学名" value={recognition.speciesNameLa} />
           </div>
