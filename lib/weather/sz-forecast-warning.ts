@@ -6,7 +6,7 @@ import type { ParkWeatherContext } from "@/lib/weather/birding-outlook";
 const HOURLY_FORECAST_ENDPOINT =
   "https://opendata.sz.gov.cn/api/339779363/1/service.xhtml";
 const DISTRICT_FORECAST_ENDPOINT =
-  "https://opendata.sz.gov.cn/api/29200_00903517/1/service.xhtml";
+  "https://opendata.sz.gov.cn/api/1964883385/1/service.xhtml";
 const SUN_MOON_TIMING_ENDPOINT =
   "https://opendata.sz.gov.cn/api/1214604037/1/service.xhtml";
 const DISASTER_WARNING_ENDPOINT =
@@ -248,6 +248,10 @@ function parseDateFromText(value: string) {
 
 function getBeijingDateToken(date = new Date()) {
   return getBeijingTimeContext(date).isoTimestamp.slice(0, 10).replace(/-/g, "");
+}
+
+function getBeijingDateText(date = new Date()) {
+  return getBeijingTimeContext(date).isoTimestamp.slice(0, 10);
 }
 
 function addDays(date: Date, days: number) {
@@ -607,41 +611,37 @@ function normalizeHourlyForecastRows(
 
 function normalizeDistrictForecastRows(
   rows: UpstreamRecord[],
-  park: ForecastWarningParkContext,
   now: Date,
 ) {
   const todayToken = getBeijingDateToken(now);
   const normalized = rows
     .map((row) => {
-      const areaName = readRowText(row, "AREANAME", "DISTRICT");
-      if (!isDistrictMatch(areaName, park)) {
+      const forecastDateTextRaw = readRowText(row, "FORECASTDATE");
+      const forecastDate = parseDateFromText(forecastDateTextRaw);
+      if (!forecastDateTextRaw || !forecastDate) {
         return null;
       }
 
-      const forecastTime = readRowText(row, "FORECASTTIME");
-      const forecastDate = parseDateFromText(forecastTime);
-      const reviseDate = parseDateFromText(
-        readRowText(row, "WRITETIME", "CRTTIME"),
-      );
-      if (!forecastTime || !forecastDate) {
-        return null;
-      }
-
-      const forecastDateToken = getBeijingDateToken(forecastDate);
+      const forecastDateText = getBeijingDateText(forecastDate);
+      const forecastDateToken = forecastDateText.replace(/-/g, "");
       if (forecastDateToken < todayToken) {
         return null;
       }
+
+      const reviseDate = parseDateFromText(
+        readRowText(row, "WRITETIME", "CRTTIME"),
+      );
 
       return {
         sortTime: forecastDate.getTime(),
         reviseTime: reviseDate?.getTime() ?? 0,
         record: {
           recId: readRowText(row, "RECID", "KEYID") || "N/A",
-          forecastTime,
+          forecastTime: forecastDateText,
           weatherStatus:
-            readRowText(row, "WEATHERSTATUS", "QPFWEATHERSTATUS") || "暂无",
-          minTemperature: readRowText(row, "MINTEMPERATURE", "TEMPERATURE") || "暂无",
-          maxTemperature: readRowText(row, "MAXTEMPERATURE", "TEMPERATURE") || "暂无",
+            readRowText(row, "WEATH", "WEATHERSTATUS") || "暂无",
+          minTemperature: readRowText(row, "MINTEMP", "MINTEMPERATURE") || "暂无",
+          maxTemperature: readRowText(row, "MAXTEMP", "MAXTEMPERATURE") || "暂无",
         } satisfies DistrictForecastRecord,
       };
     })
@@ -846,31 +846,58 @@ async function loadDistrictForecastModule(
   park: ForecastWarningParkContext,
   now: Date,
 ): Promise<ForecastWarningModule<DistrictForecastRecord>> {
-  const today = getBeijingDateToken(now);
-  const endDate = getBeijingDateToken(addDays(now, 7));
-  const upstream = await fetchUpstreamRows(
-    buildDistrictForecastUrl({
-      page: 1,
-      rows: DEFAULT_DISTRICT_ROWS,
-      startDate: today,
-      endDate,
-    }),
-    "分区预报暂时不可用，请稍后重试。",
-  );
+  const startDate = getBeijingDateToken(addDays(now, -12));
+  const endDate = getBeijingDateToken(now);
+  const [upstreamPage1, upstreamPage2] = await Promise.all([
+    fetchUpstreamRows(
+      buildDistrictForecastUrl({
+        page: 1,
+        rows: DEFAULT_DISTRICT_ROWS,
+        startDate,
+        endDate,
+      }),
+      "分区预报暂时不可用，请稍后重试。",
+    ),
+    fetchUpstreamRows(
+      buildDistrictForecastUrl({
+        page: 2,
+        rows: DEFAULT_DISTRICT_ROWS,
+        startDate,
+        endDate,
+      }),
+      "分区预报暂时不可用，请稍后重试。",
+    ),
+  ]);
 
-  if (!upstream.ok) {
-    return createModuleFailed("29200_00903517", upstream.message);
+  const upstreamRows: UpstreamRecord[] = [];
+  if (upstreamPage1.ok) {
+    upstreamRows.push(...upstreamPage1.rows);
+  }
+  if (upstreamPage2.ok) {
+    upstreamRows.push(...upstreamPage2.rows);
   }
 
-  const records = normalizeDistrictForecastRows(upstream.rows, park, now);
+  if (upstreamRows.length === 0) {
+    const failedMessage = !upstreamPage1.ok
+      ? upstreamPage1.message
+      : !upstreamPage2.ok
+        ? upstreamPage2.message
+        : "分区预报暂时不可用，请稍后重试。";
+    return createModuleFailed(
+      "1964883385",
+      failedMessage,
+    );
+  }
+
+  const records = normalizeDistrictForecastRows(upstreamRows, now);
   if (records.length === 0) {
-    return createModuleEmpty("29200_00903517", "当前暂无可展示的分区预报。");
+    return createModuleEmpty("1964883385", "当前暂无可展示的分区预报。");
   }
 
   return {
     status: "success",
     message: "已加载分区预报。",
-    source: "29200_00903517",
+    source: "1964883385",
     returnedCount: records.length,
     records,
   };
