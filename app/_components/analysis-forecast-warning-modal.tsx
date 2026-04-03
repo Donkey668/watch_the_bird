@@ -126,6 +126,15 @@ function ForecastCard({
   );
 }
 
+function formatTemperatureValue(value: string) {
+  const text = value.trim();
+  if (!text || text === "暂无") {
+    return text || "暂无";
+  }
+
+  return /^-?\d+(?:\.\d+)?$/.test(text) ? `${text}℃` : text;
+}
+
 type ForecastCardsListProps =
   | {
       records: HourlyForecastRecord[];
@@ -156,7 +165,7 @@ function ForecastCardsList({
             <ForecastCard
               key={`hourly-${record.recId}-${record.forecastTime}`}
               line1={record.weatherStatus}
-              line2={record.qpfTemp}
+              line2={formatTemperatureValue(record.qpfTemp)}
               line3={record.forecastTime}
             />
           ))}
@@ -172,7 +181,7 @@ function ForecastCardsList({
           <ForecastCard
             key={`district-${record.recId}-${record.forecastTime}`}
             line1={record.weatherStatus}
-            line2={`${record.minTemperature}/${record.maxTemperature}`}
+            line2={`${formatTemperatureValue(record.minTemperature)}/${formatTemperatureValue(record.maxTemperature)}`}
             line3={record.forecastTime}
           />
         ))}

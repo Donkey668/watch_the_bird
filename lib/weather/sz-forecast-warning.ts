@@ -18,6 +18,19 @@ const DEFAULT_DISTRICT_ROWS = 160;
 const DEFAULT_SUN_MOON_ROWS = 80;
 const DEFAULT_WARNING_ROWS = 200;
 const SUN_TIMING_ATTRIB_NAMES = new Set(["日出", "日落"]);
+const AMAP_DISTRICT_CODE_NAME_MAP: Record<string, string[]> = {
+  "440303": ["罗湖区"],
+  "440304": ["福田区"],
+  "440305": ["南山区"],
+  "440306": ["宝安区"],
+  "440307": ["龙岗区"],
+  "440308": ["盐田区"],
+  "440309": ["龙华区"],
+  "440310": ["坪山区"],
+  "440311": ["光明区"],
+  "440312": ["大鹏新区"],
+  "440387": ["深汕特别合作区", "深汕合作区"],
+};
 
 const FORECAST_WARNING_FAILURE_MESSAGE =
   "预报预警服务暂时不可用，请稍后重试。";
@@ -325,23 +338,62 @@ function normalizeDistrictKey(value: string) {
   return readText(value)
     .replace(/\s+/g, "")
     .replace(/^深圳市/, "")
-    .replace(/(特别合作区|新区|市|区|县)$/g, "");
+    .replace(/特别合作区$/g, "合作区")
+    .replace(/(合作区|新区|市|区|县)$/g, "");
 }
 
-function isDistrictMatch(areaValue: string, districtName: string) {
+function resolveParkDistrictKeys(park: ForecastWarningParkContext) {
+  const resolvedNames = [
+    park.districtName,
+    ...(AMAP_DISTRICT_CODE_NAME_MAP[park.districtCode] ?? []),
+  ];
+
+  return new Set(
+    resolvedNames
+      .map((name) => normalizeDistrictKey(name))
+      .filter((name) => Boolean(name)),
+  );
+}
+
+function isDistrictMatch(areaValue: string, park: ForecastWarningParkContext) {
   const rawArea = readText(areaValue);
   if (!rawArea) {
-    return true;
+    return false;
   }
 
   const areaKey = normalizeDistrictKey(rawArea);
-  const districtKey = normalizeDistrictKey(districtName);
-
-  if (!areaKey || !districtKey) {
-    return true;
+  if (!areaKey) {
+    return false;
   }
 
-  return areaKey.includes(districtKey) || districtKey.includes(areaKey);
+  const districtKeys = resolveParkDistrictKeys(park);
+  if (districtKeys.size === 0) {
+    return false;
+  }
+
+  return districtKeys.has(areaKey);
+}
+
+function dedupeForecastByTime<T extends { forecastTime: string }>(
+  items: Array<{
+    sortTime: number;
+    reviseTime: number;
+    record: T;
+  }>,
+) {
+  const deduped = new Map<string, typeof items[number]>();
+
+  for (const item of items) {
+    const key = item.record.forecastTime;
+    const current = deduped.get(key);
+    if (!current || item.reviseTime > current.reviseTime) {
+      deduped.set(key, item);
+    }
+  }
+
+  return Array.from(deduped.values())
+    .sort((a, b) => a.sortTime - b.sortTime)
+    .map((item) => item.record);
 }
 
 function resolveWarningColor(signalType: string, signalLevel: string) {
@@ -510,12 +562,15 @@ function normalizeHourlyForecastRows(
   const normalized = rows
     .map((row) => {
       const areaName = readRowText(row, "AREANAME", "DISTRICT");
-      if (!isDistrictMatch(areaName, park.districtName)) {
+      if (!isDistrictMatch(areaName, park)) {
         return null;
       }
 
       const displayTime = readRowText(row, "FORECASTTIME");
       const forecastDate = parseDateFromText(displayTime);
+      const reviseDate = parseDateFromText(
+        readRowText(row, "WRITETIME", "CRTTIME"),
+      );
       if (
         !displayTime ||
         !forecastDate ||
@@ -526,6 +581,7 @@ function normalizeHourlyForecastRows(
 
       return {
         sortTime: forecastDate.getTime(),
+        reviseTime: reviseDate?.getTime() ?? 0,
         record: {
           recId: readRowText(row, "RECID", "KEYID") || "N/A",
           forecastTime: displayTime,
@@ -536,12 +592,17 @@ function normalizeHourlyForecastRows(
       };
     })
     .filter(
-      (item): item is { sortTime: number; record: HourlyForecastRecord } =>
+      (
+        item,
+      ): item is {
+        sortTime: number;
+        reviseTime: number;
+        record: HourlyForecastRecord;
+      } =>
         item !== null,
-    )
-    .sort((a, b) => a.sortTime - b.sortTime);
+    );
 
-  return normalized.map((item) => item.record);
+  return dedupeForecastByTime(normalized);
 }
 
 function normalizeDistrictForecastRows(
@@ -553,12 +614,15 @@ function normalizeDistrictForecastRows(
   const normalized = rows
     .map((row) => {
       const areaName = readRowText(row, "AREANAME", "DISTRICT");
-      if (!isDistrictMatch(areaName, park.districtName)) {
+      if (!isDistrictMatch(areaName, park)) {
         return null;
       }
 
       const forecastTime = readRowText(row, "FORECASTTIME");
       const forecastDate = parseDateFromText(forecastTime);
+      const reviseDate = parseDateFromText(
+        readRowText(row, "WRITETIME", "CRTTIME"),
+      );
       if (!forecastTime || !forecastDate) {
         return null;
       }
@@ -570,6 +634,7 @@ function normalizeDistrictForecastRows(
 
       return {
         sortTime: forecastDate.getTime(),
+        reviseTime: reviseDate?.getTime() ?? 0,
         record: {
           recId: readRowText(row, "RECID", "KEYID") || "N/A",
           forecastTime,
@@ -581,12 +646,17 @@ function normalizeDistrictForecastRows(
       };
     })
     .filter(
-      (item): item is { sortTime: number; record: DistrictForecastRecord } =>
+      (
+        item,
+      ): item is {
+        sortTime: number;
+        reviseTime: number;
+        record: DistrictForecastRecord;
+      } =>
         item !== null,
-    )
-    .sort((a, b) => a.sortTime - b.sortTime);
+    );
 
-  return normalized.map((item) => item.record);
+  return dedupeForecastByTime(normalized);
 }
 
 function normalizeSunMoonTimingRows(
@@ -649,7 +719,7 @@ function normalizeWarningEvents(
       }
 
       const district = readRowText(row, "DISTRICT", "AREANAME");
-      if (!isDistrictMatch(district, park.districtName)) {
+      if (!isDistrictMatch(district, park)) {
         return null;
       }
 
