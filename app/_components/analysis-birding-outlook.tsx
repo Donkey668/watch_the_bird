@@ -22,6 +22,7 @@ import type {
   WeatherDetail,
 } from "@/lib/weather/birding-outlook";
 import { AnalysisOverviewPanel } from "./analysis-overview-panel";
+import { AnalysisForecastWarningModal } from "./analysis-forecast-warning-modal";
 
 type AnalysisBirdingOutlookProps = {
   parkId: ParkId;
@@ -95,6 +96,7 @@ export function AnalysisBirdingOutlook({
   parkId,
 }: AnalysisBirdingOutlookProps) {
   const [retryNonce, setRetryNonce] = useState(0);
+  const [isForecastWarningOpen, setIsForecastWarningOpen] = useState(false);
   const [loadState, setLoadState] = useState<OutlookLoadState | null>(null);
   const requestVersionRef = useRef(0);
   const requestKey = `${parkId}:${retryNonce}`;
@@ -281,8 +283,24 @@ export function AnalysisBirdingOutlook({
                 {"\u5237\u65b0\u7ed3\u679c"}
               </Button>
             </div>
+
+            <Button
+              type="button"
+              className="w-full rounded-xl bg-emerald-800 text-white hover:bg-emerald-700"
+              onClick={() => setIsForecastWarningOpen(true)}
+            >
+              点击获取预报预警
+            </Button>
           </>
         ) : null}
+
+        <AnalysisForecastWarningModal
+          open={isForecastWarningOpen}
+          onOpenChange={setIsForecastWarningOpen}
+          parkId={parkId}
+          parkName={selectedPark.name}
+          districtName={districtName}
+        />
       </CardContent>
     </Card>
   );

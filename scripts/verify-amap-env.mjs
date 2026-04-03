@@ -45,6 +45,7 @@ const mapKey = process.env.NEXT_PUBLIC_AMAP_KEY?.trim();
 const securityCode = process.env.NEXT_PUBLIC_AMAP_SECURITY_JS_CODE?.trim();
 const serviceHost = process.env.NEXT_PUBLIC_AMAP_SERVICE_HOST?.trim();
 const weatherKey = process.env.AMAP_WEATHER_KEY?.trim();
+const forecastWarningAppKey = process.env.SZ_WEATHER_APP_KEY?.trim();
 
 const missing = [];
 
@@ -60,6 +61,10 @@ if (!securityCode && !serviceHost) {
 
 if (!weatherKey) {
   missing.push("AMAP_WEATHER_KEY");
+}
+
+if (!forecastWarningAppKey) {
+  missing.push("SZ_WEATHER_APP_KEY");
 }
 
 if (missing.length > 0) {
