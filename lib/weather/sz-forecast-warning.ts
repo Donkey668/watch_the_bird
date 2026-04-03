@@ -896,7 +896,7 @@ async function loadDistrictForecastModule(
 
   return {
     status: "success",
-    message: "已加载分区预报。",
+    message: "已加载全市天气预报。",
     source: "1964883385",
     returnedCount: records.length,
     records,
@@ -915,7 +915,7 @@ async function loadSunMoonTimingModule(
       startDate,
       endDate: today,
     }),
-    "日月时刻暂时不可用，请稍后重试。",
+    "日出日落时刻暂时不可用，请稍后重试。",
   );
 
   if (!upstream.ok) {
@@ -924,12 +924,12 @@ async function loadSunMoonTimingModule(
 
   const records = normalizeSunMoonTimingRows(upstream.rows, now);
   if (records.length === 0) {
-    return createModuleEmpty("1214604037", "今天暂无可展示的日月时刻数据。");
+    return createModuleEmpty("1214604037", "今天暂无可展示的日出日落时刻数据。");
   }
 
   return {
     status: "success",
-    message: "已加载日月时刻。",
+    message: "已加载日出日落时刻。",
     source: "1214604037",
     returnedCount: records.length,
     records,
@@ -949,7 +949,7 @@ async function loadDisasterWarningModule(
       startDate,
       endDate,
     }),
-    "灾害预警暂时不可用，请稍后重试。",
+    "灾害天气预警暂时不可用，请稍后重试。",
   );
 
   if (!upstream.ok) {
@@ -965,7 +965,7 @@ async function loadDisasterWarningModule(
 
   return {
     status: "success",
-    message: hasOnlyPlaceholder ? "当前无生效信号。" : "已加载灾害预警。",
+    message: hasOnlyPlaceholder ? "当前无生效信号。" : "已加载灾害天气预警。",
     source: "589826359",
     returnedCount: records.length,
     records,

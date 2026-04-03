@@ -110,17 +110,23 @@ function ForecastCard({
   line1,
   line2,
   line3,
+  compactLineSpacing = false,
 }: {
   line1: string;
   line2: string;
   line3: string;
+  compactLineSpacing?: boolean;
 }) {
   return (
     <article className="min-w-[9rem] snap-start rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-3 py-3 text-center">
-      <p className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--text-primary)]">
+      <p
+        className={`${compactLineSpacing ? "" : "h-10 "}line-clamp-2 text-sm font-semibold leading-5 text-[var(--text-primary)]`}
+      >
         {line1}
       </p>
-      <p className="mt-2 text-sm leading-5 text-[var(--text-primary)]">{line2}</p>
+      <p className="mt-2 text-sm leading-5 text-[var(--text-primary)]">
+        {line2}
+      </p>
       <p className="mt-2 text-xs leading-5 text-[var(--text-secondary)]">{line3}</p>
     </article>
   );
@@ -167,6 +173,7 @@ function ForecastCardsList({
               line1={record.weatherStatus}
               line2={formatTemperatureValue(record.qpfTemp)}
               line3={record.forecastTime}
+              compactLineSpacing
             />
           ))}
         </div>
@@ -417,7 +424,7 @@ export function AnalysisForecastWarningModal({
                 </ModuleContainer>
 
                 <ModuleContainer<DistrictForecastRecord>
-                  title="分区预报"
+                  title="全市天气预报"
                   module={districtModule}
                   isLoading={isLoading}
                 >
@@ -430,7 +437,7 @@ export function AnalysisForecastWarningModal({
                 </ModuleContainer>
 
                 <ModuleContainer<SunMoonTimingRecord>
-                  title="日月时刻"
+                  title="日出日落时刻"
                   module={sunMoonModule}
                   isLoading={isLoading}
                 >
@@ -440,7 +447,7 @@ export function AnalysisForecastWarningModal({
                 </ModuleContainer>
 
                 <ModuleContainer<DisasterWarningRecord>
-                  title="灾害预警"
+                  title="灾害天气预警"
                   module={warningModule}
                   isLoading={isLoading}
                 >
@@ -462,7 +469,7 @@ export function AnalysisForecastWarningModal({
                 onClick={handleRetry}
                 disabled={isLoading}
               >
-                刷新弹窗结果
+                刷新预报预警信息
               </Button>
               <DialogClose asChild>
                 <Button type="button" size="sm">
