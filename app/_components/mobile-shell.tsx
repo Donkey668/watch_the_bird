@@ -442,7 +442,7 @@ export function MobileShell({ initialAuthSession }: MobileShellProps) {
           <DialogHeader className="space-y-2 text-center">
             <DialogTitle className="text-lg">移动端体验最佳</DialogTitle>
             <DialogDescription className="text-sm leading-6">
-              为获得最佳浏览体验，请使用移动设备竖屏浏览本页面。
+              为获得最佳浏览体验，请使用移动设备竖屏浏览。
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-row justify-center sm:justify-center">
