@@ -2,6 +2,20 @@
   "assistantAccount": "WTBTEST",
   "records": [
     {
+      "recordId": "4917921b-3e0a-4d37-982c-5ed4d7dae91a",
+      "assistantAccount": "WTBTEST",
+      "observationDate": "2026-04-04",
+      "observationTime": "20:46",
+      "observationDateTimeIso": "2026-04-04T12:46:00.000Z",
+      "birdPoint": "广东省深圳市南山区沙河街道红树湾南地铁站D口深圳湾超级总部基地C塔(建设中)",
+      "speciesName": "麻雀",
+      "note": "",
+      "locationSource": "manual",
+      "coordinates": null,
+      "createdAt": "2026-04-04T12:46:31.120Z",
+      "updatedAt": "2026-04-04T12:46:31.120Z"
+    },
+    {
       "recordId": "f7cc2436-fcee-46b3-9832-54073f5f6dfe",
       "assistantAccount": "WTBTEST",
       "observationDate": "2026-04-04",
@@ -19,5 +33,5 @@
       "updatedAt": "2026-04-04T12:20:37.136Z"
     }
   ],
-  "updatedAt": "2026-04-04T12:20:37.136Z"
+  "updatedAt": "2026-04-04T12:46:31.120Z"
 }

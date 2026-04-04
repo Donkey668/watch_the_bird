@@ -100,6 +100,30 @@ export function toNotebookExportLineItem(
   };
 }
 
+function sortExportRecordsByObservationDateTime(
+  records: NotebookRecordSnapshot[],
+) {
+  return [...records].sort((left, right) => {
+    if (left.observationDateTimeIso !== right.observationDateTimeIso) {
+      return left.observationDateTimeIso.localeCompare(right.observationDateTimeIso);
+    }
+
+    if (left.observationDate !== right.observationDate) {
+      return left.observationDate.localeCompare(right.observationDate);
+    }
+
+    if (left.observationTime !== right.observationTime) {
+      return left.observationTime.localeCompare(right.observationTime);
+    }
+
+    if (left.updatedAt !== right.updatedAt) {
+      return left.updatedAt.localeCompare(right.updatedAt);
+    }
+
+    return left.recordId.localeCompare(right.recordId);
+  });
+}
+
 export function formatNotebookExportLine(lineItem: NotebookExportLineItem) {
   return `${lineItem.sequence}. 日期：${lineItem.observationDate}；时间： ${formatNotebookExportTime(lineItem.observationTime)}；鸟点：${lineItem.birdPoint}；鸟名：${lineItem.speciesName}`;
 }
@@ -117,7 +141,8 @@ export function buildNotebookExportDocument(
     return null;
   }
 
-  const lineItems = records.map((record, index) =>
+  const sortedRecords = sortExportRecordsByObservationDateTime(records);
+  const lineItems = sortedRecords.map((record, index) =>
     toNotebookExportLineItem(record, index + 1),
   );
 
