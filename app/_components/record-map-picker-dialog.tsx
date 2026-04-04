@@ -86,6 +86,35 @@ function formatCoordinateFallbackLabel(coordinates: NotebookCoordinates) {
   return `经度 ${coordinates.longitude.toFixed(6)}，纬度 ${coordinates.latitude.toFixed(6)}`;
 }
 
+async function resolveInitialPickerCoordinates(
+  initialCoordinates: NotebookCoordinates | null,
+): Promise<NotebookCoordinates> {
+  if (initialCoordinates) {
+    return initialCoordinates;
+  }
+
+  if (typeof navigator === "undefined" || !navigator.geolocation) {
+    return DEFAULT_COORDINATES;
+  }
+
+  try {
+    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 10_000,
+        maximumAge: 0,
+      });
+    });
+
+    return {
+      longitude: position.coords.longitude,
+      latitude: position.coords.latitude,
+    };
+  } catch {
+    return DEFAULT_COORDINATES;
+  }
+}
+
 function normalizeAddressLabel(value: unknown) {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
 }
@@ -227,9 +256,8 @@ export function RecordMapPickerDialog({
     }
 
     let cancelled = false;
-    const initialSelection = initialCoordinates ?? DEFAULT_COORDINATES;
 
-    setSelectedCoordinates(initialSelection);
+    setSelectedCoordinates(initialCoordinates);
     setIsMapReady(false);
     setIsConfirming(false);
     setMapLoadErrorMessage(null);
@@ -242,6 +270,13 @@ export function RecordMapPickerDialog({
         );
         return;
       }
+
+      const initialSelection =
+        await resolveInitialPickerCoordinates(initialCoordinates);
+      if (cancelled) {
+        return;
+      }
+      setSelectedCoordinates(initialSelection);
 
       try {
         const [container, AMap] = await Promise.all([
