@@ -52,6 +52,24 @@ type LoginDialogPanelProps = {
   onLoginSubmit: (payload: LoginSubmitPayload) => Promise<void>;
 };
 
+function CloseCrossIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      className="h-4 w-4 text-rose-600"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M5 5 15 15" />
+      <path d="M15 5 5 15" />
+    </svg>
+  );
+}
+
 function LoginDialogPanel({
   isSubmitting,
   loginError,
@@ -85,10 +103,11 @@ function LoginDialogPanel({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 px-2 text-xs"
+            className="h-8 w-8 p-0 hover:bg-rose-50"
             disabled={isSubmitting}
           >
-            {AUTH_DIALOG_COPY.close}
+            <CloseCrossIcon />
+            <span className="sr-only">{AUTH_DIALOG_COPY.close}</span>
           </Button>
         </DialogClose>
       </div>
@@ -200,8 +219,8 @@ export function LoginRegisterDialog({
           />
         ) : (
           <div className="p-5">
-            <div className="flex items-start justify-between gap-4">
-              <DialogHeader className="items-center space-y-3 text-center">
+            <div className="relative">
+              <DialogHeader className="mx-auto items-center space-y-3 text-center">
                 <Image
                   src="/images/default-admin-avatar.png"
                   alt={AUTH_DIALOG_COPY.avatarAlt}
@@ -225,9 +244,10 @@ export function LoginRegisterDialog({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-2 text-xs"
+                  className="absolute right-0 top-0 h-8 w-8 p-0 hover:bg-rose-50"
                 >
-                  {AUTH_DIALOG_COPY.close}
+                  <CloseCrossIcon />
+                  <span className="sr-only">{AUTH_DIALOG_COPY.close}</span>
                 </Button>
               </DialogClose>
             </div>
