@@ -5,6 +5,7 @@ import { DEFAULT_PARK, type ParkId } from "@/lib/maps/park-options";
 import { AnalysisBirdingOutlook } from "./analysis-birding-outlook";
 import { AnalysisHabitatSpeciesReference } from "./analysis-habitat-species-reference";
 import { AnalysisMapPanel } from "./analysis-map-panel";
+import { WtbLogoFooter } from "./wtb-logo-footer";
 
 export function AnalysisScreen() {
   const [selectedParkId, setSelectedParkId] = useState<ParkId>(DEFAULT_PARK.id);
@@ -32,6 +33,7 @@ export function AnalysisScreen() {
         key={selectedParkId}
         parkId={selectedParkId}
       />
+      <WtbLogoFooter />
     </div>
   );
 }

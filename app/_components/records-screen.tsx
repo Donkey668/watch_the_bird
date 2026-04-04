@@ -9,6 +9,7 @@ import type {
 } from "@/lib/records/notebook-presenter";
 import { RecordEditorDialog } from "./record-editor-dialog";
 import { RecordsNotebookPanel } from "./records-notebook-panel";
+import { WtbLogoFooter } from "./wtb-logo-footer";
 
 type RecordsScreenProps = {
   authSession: AuthSessionSnapshot;
@@ -314,6 +315,8 @@ export function RecordsScreen({
         }}
         onConfirmDelete={handleDeleteConfirm}
       />
+
+      <WtbLogoFooter />
 
       <RecordEditorDialog
         open={editorMode !== null}

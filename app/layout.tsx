@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "观鸟助手",
-    template: "%s | 观鸟助手",
+    default: "WTB观鸟助手",
+    template: "%s | WTB观鸟助手",
   },
   description:
     "一个浅色主题、优先适配手机竖屏的观鸟网页，提供分析、识别与观测记录功能。",

@@ -8,6 +8,7 @@ import {
 import { IdentifyEncyclopediaCard } from "./identify-encyclopedia-card";
 import { IdentifyResultCard } from "./identify-result-card";
 import { IdentifyUploadCard } from "./identify-upload-card";
+import { WtbLogoFooter } from "./wtb-logo-footer";
 
 export function IdentifyScreen() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -122,6 +123,8 @@ export function IdentifyScreen() {
       <p className="px-2 text-center text-xs leading-5 text-[var(--text-secondary)]">
         识别结果仅供参考。鸟类图片越接近标准照，准确率越高。
       </p>
+
+      <WtbLogoFooter />
     </div>
   );
 }
