@@ -134,6 +134,57 @@ function ForecastCard({
   );
 }
 
+function DistrictForecastCard({
+  weatherStatus,
+  temperatureRange,
+  forecastTime,
+}: {
+  weatherStatus: string;
+  temperatureRange: string;
+  forecastTime: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const isExpanded = expanded;
+
+  return (
+    <article
+      className={`snap-start rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] ${
+        isExpanded ? "min-w-[18rem]" : "min-w-[9rem]"
+      }`}
+    >
+      <div className="flex p-3">
+        <button
+          type="button"
+          className="w-[9rem] text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-muted)]"
+          onClick={() => {
+            setExpanded((current) => !current);
+          }}
+          aria-expanded={isExpanded}
+          aria-label={`展开完整天气状况：${weatherStatus}`}
+        >
+          <p className="h-10 line-clamp-2 text-sm font-semibold leading-5 text-[var(--text-primary)]">
+            {weatherStatus}
+          </p>
+          <p className="mt-2 text-sm leading-5 text-[var(--text-primary)]">
+            {temperatureRange}
+          </p>
+          <p className="mt-2 text-xs leading-5 text-[var(--text-secondary)]">
+            {forecastTime}
+          </p>
+        </button>
+
+        {isExpanded ? (
+          <aside className="ml-2 w-[8rem] rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-card)] p-2 text-left">
+            <p className="text-xs leading-5 text-[var(--text-primary)]">
+              {weatherStatus}
+            </p>
+          </aside>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
 function formatTemperatureValue(value: string) {
   const text = value.trim();
   if (!text || text === "暂无") {
@@ -187,11 +238,11 @@ function ForecastCardsList({
     <div className="overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
       <div className="flex snap-x snap-mandatory gap-2 pr-1">
         {records.map((record) => (
-          <ForecastCard
+          <DistrictForecastCard
             key={`district-${record.recId}-${record.forecastTime}`}
-            line1={record.weatherStatus}
-            line2={`${formatTemperatureValue(record.minTemperature)}/${formatTemperatureValue(record.maxTemperature)}`}
-            line3={record.forecastTime}
+            weatherStatus={record.weatherStatus}
+            temperatureRange={`${formatTemperatureValue(record.minTemperature)}/${formatTemperatureValue(record.maxTemperature)}`}
+            forecastTime={record.forecastTime}
           />
         ))}
       </div>
