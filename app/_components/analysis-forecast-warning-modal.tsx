@@ -97,7 +97,9 @@ function ModuleContainer<T>({
       {!isLoading && module?.status === "success" ? (
         <div className="space-y-2">
           <p className="text-xs leading-5 text-[var(--text-secondary)]">
-            {`${module.message}（${module.returnedCount} 条）`}
+            {module.returnedCount > 0
+              ? `${module.message}（${module.returnedCount} 条）`
+              : module.message}
           </p>
           {children}
         </div>
@@ -234,14 +236,16 @@ function buildWarningLineText(record: DisasterWarningRecord) {
     return "当前无生效信号。";
   }
 
-  return `${record.sequence} ${record.signalType}${record.signalLevel}预警`;
+  return `${record.sequence} ${record.eventTypeName}${record.colorCode}预警`;
 }
 
 function WarningList({
   records,
+  attributions,
   onSelect,
 }: {
   records: DisasterWarningRecord[];
+  attributions?: string[];
   onSelect: (record: DisasterWarningRecord) => void;
 }) {
   if (records.length === 0) {
@@ -252,8 +256,11 @@ function WarningList({
     );
   }
 
+  const normalizedAttributions =
+    attributions?.filter((item) => item.trim().length > 0) ?? [];
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {records.map((record) =>
         record.isPlaceholder ? (
           <p
@@ -264,15 +271,29 @@ function WarningList({
           </p>
         ) : (
           <button
-            key={`warning-${record.sequence}-${record.issueTime}`}
+            key={`warning-${record.sequence}-${record.issuedTime}`}
             type="button"
-            className={`w-full text-left text-sm leading-6 ${record.textColorToken} underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-card)]`}
+            className="w-full text-left text-sm leading-6 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-card)]"
+            style={{ color: record.textColorCss }}
             onClick={() => onSelect(record)}
           >
             {buildWarningLineText(record)}
           </button>
         ),
       )}
+
+      {normalizedAttributions.length > 0 ? (
+        <div className="space-y-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3">
+          {normalizedAttributions.map((attribution, index) => (
+            <p
+              key={`warning-attribution-${index}`}
+              className="text-xs leading-5 text-[var(--text-secondary)]"
+            >
+              {attribution}
+            </p>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -454,6 +475,7 @@ export function AnalysisForecastWarningModal({
                   {warningModule?.status === "success" ? (
                     <WarningList
                       records={warningModule.records}
+                      attributions={warningModule.attributions}
                       onSelect={setActiveWarning}
                     />
                   ) : null}
@@ -494,28 +516,55 @@ export function AnalysisForecastWarningModal({
             <DialogTitle className="text-base">预警详情</DialogTitle>
             <DialogDescription className="text-xs leading-5">
               {activeWarning
-                ? `${activeWarning.signalType}${activeWarning.signalLevel}预警`
+                ? `${activeWarning.eventTypeName}${activeWarning.colorCode}预警`
                 : ""}
             </DialogDescription>
           </DialogHeader>
 
           {activeWarning ? (
-            <div className="space-y-3">
+            <div className="max-h-[calc(100dvh-12rem)] space-y-3 overflow-y-auto pr-1">
               <section className="space-y-1">
                 <p className="text-xs font-medium text-[var(--text-secondary)]">
-                  发布内容
+                  发布机构
                 </p>
                 <p className="text-sm leading-6 text-[var(--text-primary)]">
-                  {activeWarning.issueContent || "暂无发布内容。"}
+                  {activeWarning.senderName || "暂无发布机构信息。"}
                 </p>
               </section>
 
               <section className="space-y-1">
                 <p className="text-xs font-medium text-[var(--text-secondary)]">
-                  影响区域
+                  生效时间
                 </p>
                 <p className="text-sm leading-6 text-[var(--text-primary)]">
-                  {activeWarning.district || "暂无区域信息。"}
+                  {activeWarning.effectiveTime || "暂无生效时间信息。"}
+                </p>
+              </section>
+
+              <section className="space-y-1">
+                <p className="text-xs font-medium text-[var(--text-secondary)]">
+                  标题
+                </p>
+                <p className="text-sm leading-6 text-[var(--text-primary)]">
+                  {activeWarning.headline || "暂无标题信息。"}
+                </p>
+              </section>
+
+              <section className="space-y-1">
+                <p className="text-xs font-medium text-[var(--text-secondary)]">
+                  预警描述
+                </p>
+                <p className="text-sm leading-6 text-[var(--text-primary)]">
+                  {activeWarning.description || "暂无描述信息。"}
+                </p>
+              </section>
+
+              <section className="space-y-1">
+                <p className="text-xs font-medium text-[var(--text-secondary)]">
+                  防御指南
+                </p>
+                <p className="text-sm leading-6 text-[var(--text-primary)]">
+                  {activeWarning.instruction || "暂无防御指南。"}
                 </p>
               </section>
             </div>

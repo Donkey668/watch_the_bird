@@ -36,6 +36,12 @@ function readLandscapeState() {
     return false;
   }
 
+  const hasCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
+  const shouldEnforcePortraitMode = hasCoarsePointer && window.innerWidth <= 1024;
+  if (!shouldEnforcePortraitMode) {
+    return false;
+  }
+
   return window.innerWidth > window.innerHeight;
 }
 

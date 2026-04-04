@@ -9,14 +9,19 @@ const DISTRICT_FORECAST_ENDPOINT =
   "https://opendata.sz.gov.cn/api/1964883385/1/service.xhtml";
 const SUN_MOON_TIMING_ENDPOINT =
   "https://opendata.sz.gov.cn/api/1214604037/1/service.xhtml";
-const DISASTER_WARNING_ENDPOINT =
-  "https://opendata.sz.gov.cn/api/589826359/1/service.xhtml";
+const QWEATHER_ALERT_HOST_INPUT = process.env.QWEATHER_API_HOST?.trim() ?? "";
+const QWEATHER_ALERT_BASE_URL =
+  QWEATHER_ALERT_HOST_INPUT.length > 0
+    ? /^https?:\/\//i.test(QWEATHER_ALERT_HOST_INPUT)
+      ? QWEATHER_ALERT_HOST_INPUT
+      : `https://${QWEATHER_ALERT_HOST_INPUT}`
+    : "https://api.qweather.com";
+const QWEATHER_ALERT_PATH = "/weatheralert/v1/current";
 
 const MAX_ROWS_PER_REQUEST = 10000;
 const DEFAULT_HOURLY_ROWS = 1000;
 const DEFAULT_DISTRICT_ROWS = 160;
 const DEFAULT_SUN_MOON_ROWS = 80;
-const DEFAULT_WARNING_ROWS = 200;
 const SUN_TIMING_ATTRIB_NAMES = new Set(["日出", "日落"]);
 const AMAP_DISTRICT_CODE_NAME_MAP: Record<string, string[]> = {
   "440303": ["罗湖区"],
@@ -31,6 +36,18 @@ const AMAP_DISTRICT_CODE_NAME_MAP: Record<string, string[]> = {
   "440312": ["大鹏新区"],
   "440387": ["深汕特别合作区", "深汕合作区"],
 };
+const WARNING_COORDINATE_BY_DISTRICT_CODE = {
+  "440304": { districtName: "福田区", longitude: "114.06", latitude: "22.52" },
+  "440303": { districtName: "罗湖区", longitude: "114.13", latitude: "22.55" },
+  "440305": { districtName: "南山区", longitude: "113.93", latitude: "22.53" },
+  "440308": { districtName: "盐田区", longitude: "114.24", latitude: "22.56" },
+  "440306": { districtName: "宝安区", longitude: "113.89", latitude: "22.55" },
+  "440307": { districtName: "龙岗区", longitude: "114.25", latitude: "22.72" },
+  "440309": { districtName: "龙华区", longitude: "114.04", latitude: "22.70" },
+  "440310": { districtName: "坪山区", longitude: "114.35", latitude: "22.71" },
+  "440311": { districtName: "光明区", longitude: "113.94", latitude: "22.75" },
+  "440312": { districtName: "大鹏新区", longitude: "114.42", latitude: "22.64" },
+} as const;
 
 const FORECAST_WARNING_FAILURE_MESSAGE =
   "预报预警服务暂时不可用，请稍后重试。";
@@ -64,6 +81,7 @@ export type ForecastWarningModule<T> = {
   source: string;
   returnedCount: number;
   records: T[];
+  attributions?: string[];
 };
 
 export type HourlyForecastRecord = {
@@ -90,12 +108,16 @@ export type SunMoonTimingRecord = {
 
 export type DisasterWarningRecord = {
   sequence: number;
-  issueTime: string;
-  signalType: string;
-  signalLevel: string;
-  issueContent: string;
+  issuedTime: string;
+  eventTypeName: string;
+  colorCode: string;
+  senderName: string;
+  effectiveTime: string;
+  headline: string;
+  description: string;
+  instruction: string;
   district: string;
-  textColorToken: string;
+  textColorCss: string;
   isPlaceholder: boolean;
 };
 
@@ -115,18 +137,6 @@ export type ForecastWarningResponse = {
   districtForecast: ForecastWarningModule<DistrictForecastRecord> | null;
   sunMoonTiming: ForecastWarningModule<SunMoonTimingRecord> | null;
   disasterWarning: ForecastWarningModule<DisasterWarningRecord> | null;
-};
-
-type WarningEvent = {
-  key: string;
-  sourceIndex: number;
-  issueTime: string;
-  issueDate: Date;
-  issueState: string;
-  signalType: string;
-  signalLevel: string;
-  issueContent: string;
-  district: string;
 };
 
 function readText(value: unknown) {
@@ -166,6 +176,17 @@ function getForecastWarningAppKey() {
   }
 
   return appKey;
+}
+
+function getQWeatherApiKey() {
+  const apiKey =
+    process.env["X-QW-Api-Key"]?.trim() ||
+    process.env.X_QW_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error("缺少和风天气预警 API Key 配置。");
+  }
+
+  return apiKey;
 }
 
 function pad2(value: number) {
@@ -346,6 +367,22 @@ function normalizeDistrictKey(value: string) {
     .replace(/(合作区|新区|市|区|县)$/g, "");
 }
 
+function resolveWarningCoordinate(park: ForecastWarningParkContext) {
+  const byCode = WARNING_COORDINATE_BY_DISTRICT_CODE[
+    park.districtCode as keyof typeof WARNING_COORDINATE_BY_DISTRICT_CODE
+  ];
+  if (byCode) {
+    return byCode;
+  }
+
+  const districtKey = normalizeDistrictKey(park.districtName);
+  const fallback = Object.values(WARNING_COORDINATE_BY_DISTRICT_CODE).find(
+    (item) => normalizeDistrictKey(item.districtName) === districtKey,
+  );
+
+  return fallback ?? null;
+}
+
 function resolveParkDistrictKeys(park: ForecastWarningParkContext) {
   const resolvedNames = [
     park.districtName,
@@ -400,36 +437,56 @@ function dedupeForecastByTime<T extends { forecastTime: string }>(
     .map((item) => item.record);
 }
 
-function resolveWarningColor(signalType: string, signalLevel: string) {
-  if (!signalType && !signalLevel) {
-    return "text-gray-400";
+function resolveWarningColorRgb(colorCode: string) {
+  const normalizedCode = readText(colorCode).toLowerCase();
+  switch (normalizedCode) {
+    case "red":
+      return [220, 38, 38] as const;
+    case "orange":
+      return [249, 115, 22] as const;
+    case "yellow":
+      return [217, 119, 6] as const;
+    case "blue":
+      return [30, 50, 205] as const;
+    case "white":
+      return [100, 116, 139] as const;
+    default:
+      return [156, 163, 175] as const;
+  }
+}
+
+function parseColorChannel(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.min(255, Math.max(0, Math.round(value)));
   }
 
-  if (signalType && !signalLevel) {
-    return "text-yellow-600";
+  const text = readText(value);
+  if (!text) {
+    return null;
   }
 
-  if (signalLevel.includes("红")) {
-    return "text-red-600";
+  const parsed = Number.parseFloat(text);
+  if (!Number.isFinite(parsed)) {
+    return null;
   }
 
-  if (signalLevel.includes("橙")) {
-    return "text-orange-500";
-  }
+  return Math.min(255, Math.max(0, Math.round(parsed)));
+}
 
-  if (signalLevel.includes("黄")) {
-    return "text-yellow-600";
-  }
+function toRgbCss(red: number, green: number, blue: number) {
+  return `rgb(${red}, ${green}, ${blue})`;
+}
 
-  if (signalLevel.includes("蓝")) {
-    return "text-blue-600";
-  }
-
-  if (signalLevel.includes("白")) {
-    return "text-slate-500";
-  }
-
-  return "text-[var(--text-primary)]";
+function buildQWeatherAlertUrl(
+  latitude: string,
+  longitude: string,
+) {
+  const url = new URL(
+    `${QWEATHER_ALERT_PATH}/${latitude}/${longitude}`,
+    QWEATHER_ALERT_BASE_URL,
+  );
+  url.searchParams.set("localTime", "true");
+  return url.toString();
 }
 
 function buildOpenDataUrl(
@@ -472,14 +529,6 @@ export function buildSunMoonTimingUrl(options: UpstreamQueryOptions = {}) {
   return buildOpenDataUrl(
     SUN_MOON_TIMING_ENDPOINT,
     DEFAULT_SUN_MOON_ROWS,
-    options,
-  );
-}
-
-export function buildDisasterWarningUrl(options: UpstreamQueryOptions = {}) {
-  return buildOpenDataUrl(
-    DISASTER_WARNING_ENDPOINT,
-    DEFAULT_WARNING_ROWS,
     options,
   );
 }
@@ -701,111 +750,104 @@ function normalizeSunMoonTimingRows(
   return normalized.map((item) => item.record);
 }
 
-function normalizeWarningEvents(
-  rows: UpstreamRecord[],
-  park: ForecastWarningParkContext,
-  now: Date,
-) {
-  return rows
-    .map((row, sourceIndex) => {
-      const issueTime = readRowText(row, "ISSUETIME", "DDATETIME");
-      const issueDate = parseDateFromText(issueTime);
-      if (!issueDate) {
-        return null;
-      }
-
-      if (issueDate.getTime() > now.getTime()) {
-        return null;
-      }
-
-      const district = readRowText(row, "DISTRICT", "AREANAME");
-      if (!isDistrictMatch(district, park)) {
-        return null;
-      }
-
-      const signalType = readRowText(row, "SIGNALTYPE");
-      const signalLevel = readRowText(row, "SIGNALLEVEL");
-      const issueState = readRowText(row, "ISSUESTATE");
-      const key =
-        readRowText(row, "TNUMBER") ||
-        `${signalType}|${signalLevel}|${district || park.districtName}`;
-
-      return {
-        key,
-        sourceIndex,
-        issueTime,
-        issueDate,
-        issueState,
-        signalType,
-        signalLevel,
-        issueContent: readRowText(row, "ISSUECONTENT"),
-        district: district || park.districtName,
-      } satisfies WarningEvent;
-    })
-    .filter((item): item is WarningEvent => item !== null);
+function createWarningPlaceholderRecord(): DisasterWarningRecord {
+  const [red, green, blue] = resolveWarningColorRgb("gray");
+  return {
+    sequence: 1,
+    issuedTime: "",
+    eventTypeName: "",
+    colorCode: "",
+    senderName: "",
+    effectiveTime: "",
+    headline: "",
+    description: "",
+    instruction: "",
+    district: "",
+    textColorCss: toRgbCss(red, green, blue),
+    isPlaceholder: true,
+  };
 }
 
-function normalizeDisasterWarningRows(
-  rows: UpstreamRecord[],
-  park: ForecastWarningParkContext,
-  now: Date,
+function normalizeAttributions(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => readText(item))
+    .filter((item) => Boolean(item));
+}
+
+function normalizeQWeatherDisasterWarning(
+  payload: unknown,
 ) {
-  const events = normalizeWarningEvents(rows, park, now);
-  const activeMap = new Map<string, WarningEvent>();
-  const chronologicalEvents = [...events].sort((a, b) => {
-    const byIssueTime = a.issueDate.getTime() - b.issueDate.getTime();
-    if (byIssueTime !== 0) {
-      return byIssueTime;
-    }
-
-    return a.sourceIndex - b.sourceIndex;
-  });
-
-  for (const event of chronologicalEvents) {
-    const issueState = event.issueState;
-    if (issueState.includes("取消")) {
-      activeMap.delete(event.key);
-      continue;
-    }
-
-    if (issueState.includes("发布") || !issueState) {
-      activeMap.set(event.key, event);
-    }
+  if (!isRecord(payload)) {
+    return null;
   }
 
-  const activeEvents = events.filter((event) => {
-    const activeEvent = activeMap.get(event.key);
-    return Boolean(activeEvent && activeEvent.sourceIndex === event.sourceIndex);
-  });
-  const renderableEvents = activeEvents.filter(
-    (event) => event.signalType || event.signalLevel,
-  );
+  const metadata = isRecord(payload.metadata) ? payload.metadata : {};
+  const zeroResult = readText(metadata.zeroResult).toLowerCase() === "true";
+  const attributions = normalizeAttributions(metadata.attributions);
+  const alerts = Array.isArray(payload.alerts) ? payload.alerts : [];
 
-  if (renderableEvents.length === 0) {
-    return [
-      {
-        sequence: 1,
-        issueTime: "",
-        signalType: "",
-        signalLevel: "",
-        issueContent: "",
-        district: "",
-        textColorToken: "text-gray-400",
-        isPlaceholder: true,
-      } satisfies DisasterWarningRecord,
-    ];
+  const records = alerts
+    .map((alert) => {
+      if (!isRecord(alert)) {
+        return null;
+      }
+
+      const eventType = isRecord(alert.eventType) ? alert.eventType : {};
+      const color = isRecord(alert.color) ? alert.color : {};
+      const eventTypeName = readText(eventType.name);
+      if (!eventTypeName) {
+        return null;
+      }
+
+      const colorCode = readText(color.code) || "yellow";
+      const [fallbackRed, fallbackGreen, fallbackBlue] =
+        resolveWarningColorRgb(colorCode);
+      const red = parseColorChannel(color.red) ?? fallbackRed;
+      const green = parseColorChannel(color.green) ?? fallbackGreen;
+      const blue = parseColorChannel(color.blue) ?? fallbackBlue;
+
+      return {
+        issuedTime: readText(alert.issuedTime),
+        eventTypeName,
+        colorCode,
+        senderName: readText(alert.senderName),
+        effectiveTime: readText(alert.effectiveTime),
+        headline: readText(alert.headline),
+        description: readText(alert.description),
+        instruction: readText(alert.instruction),
+        textColorCss: toRgbCss(red, green, blue),
+      };
+    })
+    .filter(
+      (
+        item,
+      ): item is Omit<DisasterWarningRecord, "sequence" | "isPlaceholder" | "district"> =>
+        item !== null,
+    )
+    .map((item, index) => ({
+      sequence: index + 1,
+      district: "",
+      isPlaceholder: false,
+      ...item,
+    }));
+
+  if (zeroResult || records.length === 0) {
+    return {
+      zeroResult: true,
+      attributions,
+      records: [createWarningPlaceholderRecord()],
+    };
   }
 
-  return renderableEvents.map((event, index) => ({
-    sequence: index + 1,
-    issueTime: event.issueTime,
-    signalType: event.signalType,
-    signalLevel: event.signalLevel,
-    issueContent: event.issueContent,
-    district: event.district,
-    textColorToken: resolveWarningColor(event.signalType, event.signalLevel),
-    isPlaceholder: false,
-  }));
+  return {
+    zeroResult: false,
+    attributions,
+    records,
+  };
 }
 
 async function loadHourlyForecastModule(
@@ -836,7 +878,7 @@ async function loadHourlyForecastModule(
   return {
     status: "success",
     message: "已加载分区逐时预报。",
-    source: "339779363",
+    source: "深圳市气象局（台）",
     returnedCount: records.length,
     records,
   };
@@ -897,7 +939,7 @@ async function loadDistrictForecastModule(
   return {
     status: "success",
     message: "已加载全市天气预报。",
-    source: "1964883385",
+    source: "深圳市气象局（台）",
     returnedCount: records.length,
     records,
   };
@@ -930,7 +972,7 @@ async function loadSunMoonTimingModule(
   return {
     status: "success",
     message: "已加载日出日落时刻。",
-    source: "1214604037",
+    source: "深圳市气象局（台）",
     returnedCount: records.length,
     records,
   };
@@ -938,37 +980,69 @@ async function loadSunMoonTimingModule(
 
 async function loadDisasterWarningModule(
   park: ForecastWarningParkContext,
-  now: Date,
 ): Promise<ForecastWarningModule<DisasterWarningRecord>> {
-  const startDate = getBeijingDateToken(addDays(now, -2));
-  const endDate = getBeijingDateToken(addDays(now, 2));
-  const upstream = await fetchUpstreamRows(
-    buildDisasterWarningUrl({
-      page: 1,
-      rows: DEFAULT_WARNING_ROWS,
-      startDate,
-      endDate,
-    }),
-    "灾害天气预警暂时不可用，请稍后重试。",
-  );
-
-  if (!upstream.ok) {
-    return createModuleFailed("589826359", upstream.message);
+  const coordinate = resolveWarningCoordinate(park);
+  if (!coordinate) {
+    return createModuleFailed(
+      "weatheralert/v1/current",
+      "未找到该公园所属区县的预警坐标。",
+    );
   }
 
-  const records = normalizeDisasterWarningRows(upstream.rows, park, now);
-  if (records.length === 0) {
-    return createModuleEmpty("589826359", "当前无生效信号。");
+  const url = buildQWeatherAlertUrl(coordinate.latitude, coordinate.longitude);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+        "X-QW-Api-Key": getQWeatherApiKey(),
+      },
+    });
+  } catch {
+    return createModuleFailed(
+      "weatheralert/v1/current",
+      "灾害天气预警暂时不可用，请稍后重试。",
+    );
   }
 
-  const hasOnlyPlaceholder = records.length === 1 && records[0]?.isPlaceholder;
+  if (!response.ok) {
+    return createModuleFailed(
+      "weatheralert/v1/current",
+      "灾害天气预警暂时不可用，请稍后重试。",
+    );
+  }
+
+  let payload: unknown;
+  try {
+    payload = (await response.json()) as unknown;
+  } catch {
+    return createModuleFailed(
+      "weatheralert/v1/current",
+      "灾害天气预警暂时不可用，请稍后重试。",
+    );
+  }
+
+  const normalized = normalizeQWeatherDisasterWarning(payload);
+  if (!normalized) {
+    return createModuleFailed(
+      "weatheralert/v1/current",
+      "灾害天气预警暂时不可用，请稍后重试。",
+    );
+  }
+
+  const hasOnlyPlaceholder =
+    normalized.records.length === 1 && normalized.records[0]?.isPlaceholder;
 
   return {
     status: "success",
-    message: hasOnlyPlaceholder ? "当前无生效信号。" : "已加载灾害天气预警。",
-    source: "589826359",
-    returnedCount: records.length,
-    records,
+    message: "已加载灾害天气预警。",
+    source: "和风天气",
+    returnedCount: hasOnlyPlaceholder ? 0 : normalized.records.length,
+    records: normalized.records,
+    attributions: normalized.attributions,
   };
 }
 
@@ -983,7 +1057,7 @@ export async function fetchForecastWarningModules(
       loadHourlyForecastModule(context, now),
       loadDistrictForecastModule(context, now),
       loadSunMoonTimingModule(now),
-      loadDisasterWarningModule(context, now),
+      loadDisasterWarningModule(context),
     ]);
 
   return {

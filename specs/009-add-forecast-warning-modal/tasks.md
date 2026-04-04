@@ -93,13 +93,13 @@ render correct card content, filtering windows, and horizontal overflow handling
 **Goal**: Deliver sun-moon timing rows and disaster-warning list with effective
 status filtering, level-color rules, and detail popup behavior.
 
-**Independent Test**: 打开弹窗后检查“日月时刻”模块按行展示 `ATTRIBNAME/ATTRIBVALUE` 且有分隔线；“灾害预警”模块仅显示当前北京时间仍处于“发布”且未取消的记录，点击预警行能查看 `ISSUECONTENT` 与 `DISTRICT` 明细。
+**Independent Test**: 打开弹窗后检查“日月时刻”模块按行展示 `ATTRIBNAME/ATTRIBVALUE` 且有分隔线；“灾害天气预警”模块使用和风 `weatheralert/v1/current/{latitude}/{longitude}` 返回结果，按 `序号 eventType.name color.code预警` 渲染并套用 RGB 颜色，点击可查看 `senderName/effectiveTime/headline/description/instruction`，若 `metadata.zeroResult=true` 显示灰色“当前无生效信号。”。
 
 - [X] T017 [P] [US3] Implement sun-moon normalization (`ATTRIBNAME`, `ATTRIBVALUE`, `DDATETIME`) with today-only filtering in `lib/weather/sz-forecast-warning.ts`
-- [X] T018 [P] [US3] Implement disaster warning effective-state resolution (`发布` vs `取消`), text formatting, and color fallback rules in `lib/weather/sz-forecast-warning.ts`
-- [X] T019 [US3] Extend sun-moon and warning module payload assembly with detail fields in `app/api/analysis/forecast-warning/route.ts`
-- [X] T020 [P] [US3] Implement sun-moon separator rows and warning list line rendering (`序号 SIGNALTYPE SIGNALLEVEL预警`) in `app/_components/analysis-forecast-warning-modal.tsx`
-- [X] T021 [US3] Add warning detail dialog click flow showing `ISSUECONTENT` and `DISTRICT`, including non-clickable gray placeholder behavior in `app/_components/analysis-forecast-warning-modal.tsx`
+- [X] T018 [P] [US3] Replace disaster-warning upstream with QWeather `GET /weatheralert/v1/current/{latitude}/{longitude}` using district-code to coordinate mapping, `localTime=true`, `lang=ZH_HANS`, and `X-QW-Api-Key` header in `lib/weather/sz-forecast-warning.ts`
+- [X] T019 [US3] Parse `metadata.zeroResult`, `metadata.attributions`, and `alerts.*` fields into warning module payload records and preserve ordered output in `lib/weather/sz-forecast-warning.ts`
+- [X] T020 [P] [US3] Update warning list text format to `序号 alerts.eventType.name alerts.color.code预警` and apply per-row RGB text colors from `alerts.color.{red,green,blue}` in `app/_components/analysis-forecast-warning-modal.tsx`
+- [X] T021 [US3] Update warning detail dialog to show `alerts.senderName`, `alerts.effectiveTime`, `alerts.headline`, `alerts.description`, `alerts.instruction` with vertical scrolling, and render gray placeholder when `metadata.zeroResult=true` in `app/_components/analysis-forecast-warning-modal.tsx`
 
 **Checkpoint**: All user stories are complete when sun-moon and warning modules
 follow the required filtering, formatting, color, and detail-interaction rules.
