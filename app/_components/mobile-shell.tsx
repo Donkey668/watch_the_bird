@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AuthSessionSnapshot, LoginResponse } from "@/lib/auth/login";
 import { GUEST_AUTH_SESSION } from "@/lib/auth/session-store";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -10,6 +11,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { AnalysisScreen } from "./analysis-screen";
 import { AuthEntry } from "./auth-entry";
@@ -61,6 +70,7 @@ export function MobileShell({ initialAuthSession }: MobileShellProps) {
   const [isRecordsReminderOpen, setIsRecordsReminderOpen] = useState(false);
   const [recordsAuthDismissedVersion, setRecordsAuthDismissedVersion] =
     useState(0);
+  const [isDesktopTipOpen, setIsDesktopTipOpen] = useState(false);
 
   const activeScreenRef = useRef<ScreenId>("analysis");
   const queuedScreenRef = useRef<ScreenId | null>(null);
@@ -134,6 +144,11 @@ export function MobileShell({ initialAuthSession }: MobileShellProps) {
     },
     [commitScreen, isTransitioning],
   );
+
+  useEffect(() => {
+    const desktopMediaQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+    setIsDesktopTipOpen(desktopMediaQuery.matches);
+  }, []);
 
   useEffect(() => {
     const updateOrientation = () => {
@@ -419,6 +434,28 @@ export function MobileShell({ initialAuthSession }: MobileShellProps) {
         message="请登录个人空间！"
         onOpenChange={setIsRecordsReminderOpen}
       />
+      <Dialog open={isDesktopTipOpen} onOpenChange={setIsDesktopTipOpen}>
+        <DialogContent
+          className="max-w-[22rem]"
+          onInteractOutside={(event) => event.preventDefault()}
+        >
+          <DialogHeader className="space-y-2 text-center">
+            <DialogTitle className="text-lg">移动端体验最佳</DialogTitle>
+            <DialogDescription className="text-sm leading-6">
+              为获得最佳浏览体验，请使用移动设备竖屏浏览本页面。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row justify-center sm:justify-center">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setIsDesktopTipOpen(false)}
+            >
+              我知道了
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
