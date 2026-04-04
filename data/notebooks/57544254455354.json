@@ -1,5 +1,23 @@
 {
   "assistantAccount": "WTBTEST",
-  "records": [],
-  "updatedAt": "2026-04-02T07:03:23.623Z"
+  "records": [
+    {
+      "recordId": "f7cc2436-fcee-46b3-9832-54073f5f6dfe",
+      "assistantAccount": "WTBTEST",
+      "observationDate": "2026-04-04",
+      "observationTime": "20:19",
+      "observationDateTimeIso": "2026-04-04T12:19:00.000Z",
+      "birdPoint": "广东省深圳市罗湖区黄贝街道东湖二路9号东湖公园",
+      "speciesName": "红耳鹎",
+      "note": "",
+      "locationSource": "map",
+      "coordinates": {
+        "longitude": 114.152356,
+        "latitude": 22.563089
+      },
+      "createdAt": "2026-04-04T12:20:37.136Z",
+      "updatedAt": "2026-04-04T12:20:37.136Z"
+    }
+  ],
+  "updatedAt": "2026-04-04T12:20:37.136Z"
 }

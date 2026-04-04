@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
+import { exportNotebookRecords } from "@/lib/records/notebook-export";
 import { cn } from "@/lib/utils";
 
 type RecordsNotebookPanelProps = {
@@ -89,6 +90,24 @@ export function RecordsNotebookPanel({
   const records = notebook?.records ?? [];
   const isAuthenticated = authSession.status === "authenticated";
   const isCreateDisabled = isLoading || isDeleteSubmitting;
+  const isExportEntryVisible = isAuthenticated && records.length > 0;
+  const isExportDisabled =
+    isCreateDisabled || !authSession.assistantAccount || records.length === 0;
+
+  const handleExportNotebook = () => {
+    const result = exportNotebookRecords({
+      context: {
+        assistantAccount: authSession.assistantAccount ?? "",
+        isAuthenticated,
+        recordCount: records.length,
+      },
+      records,
+    });
+
+    if (!result.ok) {
+      return;
+    }
+  };
 
   return (
     <>
@@ -176,15 +195,32 @@ export function RecordsNotebookPanel({
             )}
           </div>
 
-          <div className="flex justify-center pt-1">
-            <Button
-              type="button"
-              onClick={onOpenCreate}
-              disabled={isCreateDisabled}
-              className="min-w-[9rem]"
-            >
-              新增记录
-            </Button>
+          <div className="space-y-2 pt-1">
+            <div className="flex justify-center">
+              <Button
+                type="button"
+                onClick={onOpenCreate}
+                disabled={isCreateDisabled}
+                className="min-w-[9rem]"
+              >
+                新增记录
+              </Button>
+            </div>
+            {isExportEntryVisible ? (
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={handleExportNotebook}
+                  disabled={isExportDisabled}
+                  className={cn(
+                    "text-sm leading-6 text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]",
+                    isExportDisabled ? "cursor-not-allowed opacity-60" : "",
+                  )}
+                >
+                  保存记录到本地
+                </button>
+              </div>
+            ) : null}
           </div>
         </CardContent>
       </Card>
