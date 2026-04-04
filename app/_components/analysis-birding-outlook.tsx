@@ -252,9 +252,14 @@ export function AnalysisBirdingOutlook({
 
             <section className="space-y-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
               <div className="space-y-1">
-                <p className="text-sm font-semibold text-[var(--text-primary)]">
-                  {"\u4eca\u65e5\u5929\u6c14\u4fe1\u606f"}
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">
+                    {"\u4eca\u65e5\u5929\u6c14\u4fe1\u606f"}
+                  </p>
+                  <span className="text-xs text-[var(--text-secondary)]">
+                    来源 高德天气
+                  </span>
+                </div>
                 <p className="text-xs leading-5 text-[var(--text-secondary)]">
                   {response.message}
                 </p>

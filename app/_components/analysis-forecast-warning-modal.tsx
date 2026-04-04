@@ -63,11 +63,13 @@ function ModuleContainer<T>({
   title,
   module,
   isLoading,
+  showReturnedCount = true,
   children,
 }: React.PropsWithChildren<{
   title: string;
   module: ForecastWarningModule<T> | null;
   isLoading: boolean;
+  showReturnedCount?: boolean;
 }>) {
   return (
     <section className="space-y-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
@@ -97,7 +99,7 @@ function ModuleContainer<T>({
       {!isLoading && module?.status === "success" ? (
         <div className="space-y-2">
           <p className="text-xs leading-5 text-[var(--text-secondary)]">
-            {module.returnedCount > 0
+            {showReturnedCount && module.returnedCount > 0
               ? `${module.message}（${module.returnedCount} 条）`
               : module.message}
           </p>
@@ -204,10 +206,55 @@ type ForecastCardsListProps =
       type: "district";
     };
 
+function useTransientScrollbarVisibility() {
+  const [isScrollbarVisible, setIsScrollbarVisible] = useState(false);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleHide = useCallback((delayMs: number) => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+    }
+
+    hideTimerRef.current = setTimeout(() => {
+      setIsScrollbarVisible(false);
+      hideTimerRef.current = null;
+    }, delayMs);
+  }, []);
+
+  const showTemporarily = useCallback(() => {
+    setIsScrollbarVisible(true);
+    scheduleHide(550);
+  }, [scheduleHide]);
+
+  const handleTouchEnd = useCallback(() => {
+    scheduleHide(200);
+  }, [scheduleHide]);
+
+  useEffect(() => {
+    return () => {
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+      }
+    };
+  }, []);
+
+  return {
+    isScrollbarVisible,
+    showTemporarily,
+    handleTouchEnd,
+  };
+}
+
 function ForecastCardsList({
   records,
   type,
 }: ForecastCardsListProps) {
+  const { isScrollbarVisible, showTemporarily, handleTouchEnd } =
+    useTransientScrollbarVisibility();
+  const listScrollbarClassName = `desktop-scrollbar-only ${
+    isScrollbarVisible ? "mobile-scrollbar-active" : ""
+  } overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]`;
+
   if (records.length === 0) {
     return (
       <p className="text-sm leading-6 text-[var(--text-secondary)]">
@@ -218,7 +265,13 @@ function ForecastCardsList({
 
   if (type === "hourly") {
     return (
-      <div className="overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
+      <div
+        className={listScrollbarClassName}
+        onScroll={showTemporarily}
+        onTouchStart={showTemporarily}
+        onTouchMove={showTemporarily}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className="flex snap-x snap-mandatory gap-2 pr-1">
           {records.map((record) => (
             <ForecastCard
@@ -235,7 +288,13 @@ function ForecastCardsList({
   }
 
   return (
-    <div className="overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
+    <div
+      className={listScrollbarClassName}
+      onScroll={showTemporarily}
+      onTouchStart={showTemporarily}
+      onTouchMove={showTemporarily}
+      onTouchEnd={handleTouchEnd}
+    >
       <div className="flex snap-x snap-mandatory gap-2 pr-1">
         {records.map((record) => (
           <DistrictForecastCard
@@ -489,6 +548,7 @@ export function AnalysisForecastWarningModal({
                   title="分区逐时预报"
                   module={hourlyModule}
                   isLoading={isLoading}
+                  showReturnedCount={false}
                 >
                   {hourlyModule?.status === "success" ? (
                     <ForecastCardsList records={hourlyModule.records} type="hourly" />
@@ -499,6 +559,7 @@ export function AnalysisForecastWarningModal({
                   title="全市天气预报"
                   module={districtModule}
                   isLoading={isLoading}
+                  showReturnedCount={false}
                 >
                   {districtModule?.status === "success" ? (
                     <ForecastCardsList
@@ -512,6 +573,7 @@ export function AnalysisForecastWarningModal({
                   title="日出日落时刻"
                   module={sunMoonModule}
                   isLoading={isLoading}
+                  showReturnedCount={false}
                 >
                   {sunMoonModule?.status === "success" ? (
                     <SunMoonList records={sunMoonModule.records} />

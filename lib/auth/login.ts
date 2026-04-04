@@ -1,3 +1,5 @@
+import accountPasswordLibrary from "@/data/auth/account-password-library.json";
+
 export type LoginRequestPayload = {
   assistantAccount: string;
   userPassword: string;
@@ -21,10 +23,52 @@ export type AuthSessionSnapshot = {
   authenticatedAt: string | null;
 };
 
-const TEST_ACCOUNT = {
-  assistantAccount: "WTBTEST",
-  userPassword: "123456",
-} as const;
+type AccountPasswordLibraryRecord = {
+  assistantAccount: string;
+  userPassword: string;
+};
+
+function isAccountPasswordLibraryRecord(
+  value: unknown,
+): value is AccountPasswordLibraryRecord {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const { assistantAccount, userPassword } =
+    value as Partial<AccountPasswordLibraryRecord>;
+
+  return (
+    typeof assistantAccount === "string" && typeof userPassword === "string"
+  );
+}
+
+function buildAccountPasswordLookup(source: unknown) {
+  const lookup = new Map<string, string>();
+
+  if (!Array.isArray(source)) {
+    return lookup;
+  }
+
+  for (const item of source) {
+    if (!isAccountPasswordLibraryRecord(item)) {
+      continue;
+    }
+
+    const assistantAccount = item.assistantAccount.trim();
+    const userPassword = item.userPassword.trim();
+
+    if (!assistantAccount || !userPassword) {
+      continue;
+    }
+
+    lookup.set(assistantAccount, userPassword);
+  }
+
+  return lookup;
+}
+
+const ACCOUNT_PASSWORD_LOOKUP = buildAccountPasswordLookup(accountPasswordLibrary);
 
 function normalizeCredentialValue(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -70,32 +114,24 @@ export function authenticateLogin(payload: unknown): {
     };
   }
 
-  if (normalizedAssistantAccount !== TEST_ACCOUNT.assistantAccount) {
+  const expectedPassword = ACCOUNT_PASSWORD_LOOKUP.get(normalizedAssistantAccount);
+
+  if (expectedPassword === undefined) {
     return {
       statusCode: 401,
-      response: buildLoginResponse(
-        "account_not_found",
-        "请先注册助手账号！",
-      ),
+      response: buildLoginResponse("account_not_found", "请先注册助手账号！"),
     };
   }
 
-  if (normalizedUserPassword !== TEST_ACCOUNT.userPassword) {
+  if (normalizedUserPassword !== expectedPassword) {
     return {
       statusCode: 401,
-      response: buildLoginResponse(
-        "invalid_password",
-        "用户密码错误。",
-      ),
+      response: buildLoginResponse("invalid_password", "用户密码错误。"),
     };
   }
 
   return {
     statusCode: 200,
-    response: buildLoginResponse(
-      "success",
-      "登录成功。",
-      normalizedAssistantAccount,
-    ),
+    response: buildLoginResponse("success", "登录成功。", normalizedAssistantAccount),
   };
 }
