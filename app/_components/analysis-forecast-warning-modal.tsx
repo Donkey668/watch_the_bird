@@ -64,19 +64,23 @@ function ModuleContainer<T>({
   module,
   isLoading,
   showReturnedCount = true,
+  showSuccessMessage = true,
+  sourceOverride,
   children,
 }: React.PropsWithChildren<{
   title: string;
   module: ForecastWarningModule<T> | null;
   isLoading: boolean;
   showReturnedCount?: boolean;
+  showSuccessMessage?: boolean;
+  sourceOverride?: string;
 }>) {
   return (
     <section className="space-y-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-[var(--text-primary)]">{title}</h3>
         {module ? (
-          <span className="text-xs text-[var(--text-secondary)]">{`来源 ${module.source}`}</span>
+          <span className="text-xs text-[var(--text-secondary)]">{`来源 ${sourceOverride ?? module.source}`}</span>
         ) : null}
       </div>
 
@@ -98,11 +102,13 @@ function ModuleContainer<T>({
 
       {!isLoading && module?.status === "success" ? (
         <div className="space-y-2">
-          <p className="text-xs leading-5 text-[var(--text-secondary)]">
-            {showReturnedCount && module.returnedCount > 0
-              ? `${module.message}（${module.returnedCount} 条）`
-              : module.message}
-          </p>
+          {showSuccessMessage ? (
+            <p className="text-xs leading-5 text-[var(--text-secondary)]">
+              {showReturnedCount && module.returnedCount > 0
+                ? `${module.message}（${module.returnedCount} 条）`
+                : module.message}
+            </p>
+          ) : null}
           {children}
         </div>
       ) : null}
@@ -343,7 +349,7 @@ function SunMoonList({
 
 function buildWarningLineText(record: DisasterWarningRecord) {
   if (record.isPlaceholder) {
-    return "当前无生效信号。";
+    return "点击查看深圳市气象局（台）官方实时预警 ↗";
   }
 
   return `${record.sequence} ${record.eventTypeName}${record.colorCode}预警`;
@@ -358,6 +364,22 @@ function WarningList({
   attributions?: string[];
   onSelect: (record: DisasterWarningRecord) => void;
 }) {
+  const [isDesktopDevice, setIsDesktopDevice] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const update = () => {
+      setIsDesktopDevice(mediaQuery.matches);
+    };
+
+    update();
+    mediaQuery.addEventListener("change", update);
+
+    return () => {
+      mediaQuery.removeEventListener("change", update);
+    };
+  }, []);
+
   if (records.length === 0) {
     return (
       <p className="text-sm leading-6 text-[var(--text-secondary)]">
@@ -373,12 +395,19 @@ function WarningList({
     <div className="space-y-3">
       {records.map((record) =>
         record.isPlaceholder ? (
-          <p
+          <a
             key={`warning-placeholder-${record.sequence}`}
-            className="text-sm leading-6 text-gray-400"
+            href={
+              isDesktopDevice
+                ? "https://weather.sz.gov.cn/qixiangfuwu/yujingfuwu/tufashijianyujing/mindex.html"
+                : "https://weather.sz.gov.cn/mobile/qixiangfuwu/yujingfuwu/tufashijianyujing/index.html"
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm leading-6 text-[var(--text-secondary)] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-card)]"
           >
             {buildWarningLineText(record)}
-          </p>
+          </a>
         ) : (
           <button
             key={`warning-${record.sequence}-${record.issuedTime}`}
@@ -505,6 +534,10 @@ export function AnalysisForecastWarningModal({
   const districtModule = response?.districtForecast ?? null;
   const sunMoonModule = response?.sunMoonTiming ?? null;
   const warningModule = response?.disasterWarning ?? null;
+  const warningHasOnlyPlaceholder =
+    warningModule?.status === "success" &&
+    warningModule.records.length === 1 &&
+    warningModule.records[0]?.isPlaceholder;
   const isLoading = open && !isResolvedCurrentRequest;
   const isGlobalFailed =
     Boolean(isResolvedCurrentRequest && loadState?.transportError) ||
@@ -584,6 +617,10 @@ export function AnalysisForecastWarningModal({
                   title="灾害天气预警"
                   module={warningModule}
                   isLoading={isLoading}
+                  showSuccessMessage={!warningHasOnlyPlaceholder}
+                  sourceOverride={
+                    warningHasOnlyPlaceholder ? "深圳市气象局（台）" : undefined
+                  }
                 >
                   {warningModule?.status === "success" ? (
                     <WarningList
