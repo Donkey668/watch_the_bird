@@ -9,6 +9,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {
@@ -97,6 +105,7 @@ export function AnalysisBirdingOutlook({
 }: AnalysisBirdingOutlookProps) {
   const [retryNonce, setRetryNonce] = useState(0);
   const [isForecastWarningOpen, setIsForecastWarningOpen] = useState(false);
+  const [isBirdingIndexNoteOpen, setIsBirdingIndexNoteOpen] = useState(false);
   const [loadState, setLoadState] = useState<OutlookLoadState | null>(null);
   const requestVersionRef = useRef(0);
   const requestKey = `${parkId}:${retryNonce}`;
@@ -191,7 +200,7 @@ export function AnalysisBirdingOutlook({
           {"\u5929\u6c14\u4e0e\u89c2\u9e1f\u6307\u6570"}
         </CardTitle>
         <CardDescription className="text-xs leading-5">
-          {`\u6839\u636e ${selectedPark.name} \u6240\u5728\u7684 ${districtName} \u5b9e\u65f6\u5929\u6c14\uff0c\u83b7\u53d6\u4eca\u65e5\u89c2\u9e1f\u6307\u6570\u3002`}
+          {`\u6839\u636e ${selectedPark.name} \u6240\u5728\u7684 ${districtName} \u5b9e\u65f6\u5929\u6c14\uff0c\u8ba1\u7b97\u5f53\u524d\u89c2\u9e1f\u6307\u6570\u3002`}
         </CardDescription>
       </CardHeader>
 
@@ -226,14 +235,24 @@ export function AnalysisBirdingOutlook({
           <>
             <section
               className={cn(
-                "rounded-2xl border p-4",
+                "cursor-pointer rounded-2xl border p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-base)]",
                 getBirdingIndexClasses(birdingValue),
               )}
+              role="button"
+              tabIndex={0}
+              aria-label="查看当前观鸟指数说明"
+              onClick={() => setIsBirdingIndexNoteOpen(true)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setIsBirdingIndexNoteOpen(true);
+                }
+              }}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em]">
-                    {"\u4eca\u65e5\u89c2\u9e1f\u6307\u6570"}
+                    {"\u5f53\u524d\u89c2\u9e1f\u6307\u6570"}
                   </p>
                   <p className="text-2xl font-semibold leading-none">
                     {birdingValue ?? "\u6682\u4e0d\u53ef\u7528"}
@@ -254,7 +273,7 @@ export function AnalysisBirdingOutlook({
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-[var(--text-primary)]">
-                    {"\u4eca\u65e5\u5929\u6c14\u4fe1\u606f"}
+                    {"\u5f53\u524d\u5929\u6c14\u4fe1\u606f"}
                   </p>
                   <span className="text-xs text-[var(--text-secondary)]">
                     来源 高德天气
@@ -306,6 +325,33 @@ export function AnalysisBirdingOutlook({
           parkName={selectedPark.name}
           districtName={districtName}
         />
+        <Dialog
+          open={isBirdingIndexNoteOpen}
+          onOpenChange={setIsBirdingIndexNoteOpen}
+        >
+          <DialogContent className="max-w-sm gap-1">
+            <DialogHeader className="space-y-1">
+              <DialogTitle className="text-base">当前观鸟指数说明</DialogTitle>
+              <DialogDescription className="sr-only">
+                当前观鸟指数说明弹窗，包含适宜、较适宜和不适宜三个等级说明。
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-1 text-sm leading-6 text-[var(--text-primary)]">
+              <p>适宜：鸟类活跃，观鸟体验佳。</p>
+              <p>较适宜：鸟类活动正常，需注意环境条件。</p>
+              <p>不适宜：鸟类活跃度低，不推荐观鸟。</p>
+            </div>
+            <DialogFooter className="flex-row justify-center sm:justify-center">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsBirdingIndexNoteOpen(false)}
+              >
+                我知道了
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
