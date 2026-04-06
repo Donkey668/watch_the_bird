@@ -208,7 +208,7 @@ function NoteDialog({
         onClick={(event) => event.stopPropagation()}
       >
         <CardHeader className="space-y-3 pb-3">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center justify-between gap-3">
             <CardTitle id={`analysis-overview-note-${noteKey}`}>
               {note.title}
             </CardTitle>

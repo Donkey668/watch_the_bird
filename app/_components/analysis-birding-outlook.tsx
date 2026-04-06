@@ -329,19 +329,31 @@ export function AnalysisBirdingOutlook({
           open={isBirdingIndexNoteOpen}
           onOpenChange={setIsBirdingIndexNoteOpen}
         >
-          <DialogContent className="max-w-sm gap-1">
-            <DialogHeader className="space-y-1">
-              <DialogTitle className="text-base">当前观鸟指数说明</DialogTitle>
+          <DialogContent className="max-w-sm !gap-0">
+            <DialogHeader className="space-y-0">
+              <div className="flex items-start justify-between gap-3">
+                <DialogTitle className="text-base">当前观鸟指数说明</DialogTitle>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setIsBirdingIndexNoteOpen(false)}
+                  aria-label="关闭说明弹窗"
+                >
+                  ×
+                </Button>
+              </div>
               <DialogDescription className="sr-only">
                 当前观鸟指数说明弹窗，包含适宜、较适宜和不适宜三个等级说明。
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-1 text-sm leading-6 text-[var(--text-primary)]">
+            <div className="mt-1 space-y-1 text-sm leading-6 text-[var(--text-primary)]">
               <p>适宜：鸟类活跃，观鸟体验佳。</p>
               <p>较适宜：鸟类活动正常，需注意环境条件。</p>
               <p>不适宜：鸟类活跃度低，不推荐观鸟。</p>
             </div>
-            <DialogFooter className="flex-row justify-center sm:justify-center">
+            <DialogFooter className="mt-1 flex-row justify-center sm:justify-center">
               <Button
                 type="button"
                 size="sm"
